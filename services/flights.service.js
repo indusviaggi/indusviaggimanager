@@ -38,7 +38,7 @@ async function setFlights() {
       airlinesN.push(at);
     }
   });
-  //console.log(airlinesI, airlinesT, airlinesN);
+  console.log(airlinesI, airlinesT, airlinesN);
 
   airlinesN.map((an) => {
     if (an.trim() !== "") {

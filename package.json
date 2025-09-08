@@ -1,5 +1,5 @@
 {
-    "name": "indusviaggimanager",
+    "name": "next-js-registration-login-example",
     "version": "0.1.0",
     "private": true,
     "scripts": {
@@ -9,7 +9,11 @@
         "lint": "next lint"
     },
     "dependencies": {
+        "@emotion/react": "^11.14.0",
+        "@emotion/styled": "^11.14.1",
         "@hookform/resolvers": "^3.0.0",
+        "@mui/icons-material": "^7.3.1",
+        "@mui/material": "^7.3.1",
         "bcryptjs": "^2.4.3",
         "chart.js": "^4.0.0",
         "express-jwt": "^8.4.1",
@@ -27,6 +31,7 @@
         "react-chartjs-2": "^5.0.0",
         "react-dom": "18.2.0",
         "react-hook-form": "^7.43.9",
+        "recharts": "^3.1.2",
         "rxjs": "^7.8.0",
         "sweetalert2": "^11.7.5",
         "xlsx": "^0.18.5",

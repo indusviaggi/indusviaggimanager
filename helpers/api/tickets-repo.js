@@ -15,13 +15,15 @@ export const ticketsRepo = {
   getTicketsByAgent,
   getFlights,
   findAndUpdate,
+  getBookings,
 };
 
 async function getFlights() {
   let regex =
     `(${moment().format("DD/MM/YYYY")}|` +
     `${moment().add(1, "days").format("DD/MM/YYYY")}|` +
-    `${moment().add(2, "days").format("DD/MM/YYYY")})`;
+    `${moment().add(2, "days").format("DD/MM/YYYY")}|` +
+    `${moment().add(3, "days").format("DD/MM/YYYY")})`;
 
   const filter = {
     dates: {
@@ -148,4 +150,11 @@ async function getProfit(filters) {
   return await Tickets.find(filter).sort({
     bookedOn: 1,
   });
+}
+
+async function getBookings() {
+  let currentDate = new Date();
+  let endDate = formatDate(currentDate);
+  let startDate = formatDate(new Date(currentDate.getFullYear() - 2, currentDate.getMonth(), 1));
+  return await Tickets.find({bookedOn : {$gte: startDate, $lte: endDate}}).select(["bookedOn", "dates"]).sort({ bookedOn: -1 });
 }

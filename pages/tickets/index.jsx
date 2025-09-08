@@ -1,39 +1,91 @@
 import { Layout } from "components/users";
-import { DataTable } from "primereact/datatable";
-import { Column } from "primereact/column";
-import { ColumnGroup } from "primereact/columngroup";
-import { Row } from "primereact/row";
-import { InputText } from "primereact/inputtext";
-import { Button } from "primereact/button";
-import { Dropdown } from "primereact/dropdown";
-import { FilterMatchMode } from "primereact/api";
 import React, { useState, useEffect, useRef } from "react";
 import Router from "next/router";
-import { Dialog } from "primereact/dialog";
 import { formatDate, ticketsService } from "../../services";
 import { jsPDF } from "jspdf";
-
+import {
+  Grid, Paper, Typography, Box, Stack, IconButton, Tooltip, Chip, Button, Dialog, DialogTitle, DialogContent, DialogActions, Table, TableBody, TableRow, TableCell,
+  FormControl, InputLabel, Select, MenuItem, OutlinedInput, Checkbox, ListItemText
+} from "@mui/material";
+import AddIcon from '@mui/icons-material/Add';
+import InfoIcon from "@mui/icons-material/Info";
+import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
+import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
+import DownloadIcon from '@mui/icons-material/Download';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 export default Index;
 
 function Index() {
   const [tickets, setTickets] = useState([]);
   const [apiTickets, setApiTickets] = useState([]);
-  const dt = useRef(null);
   const [ticketDialog, setTicketDialog] = useState(false);
   const [deleteTicketDialog, setDeleteTicketDialog] = useState(false);
   const [ticket, setTicket] = useState(null);
   const [loading, setLoading] = useState(false);
   const [dates, setDates] = useState({ start: "", end: "", type: "" });
   const [totals, setTotals] = useState([0, 0, 0, 0]);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(50);
+  const [searchFields, setSearchFields] = useState(["all"]);
+  const [globalSearch, setGlobalSearch] = useState("");
+  const [sortConfig, setSortConfig] = useState({ key: 'bookedOn', direction: 'descending' });
+  const [notPaidOnly, setNotPaidOnly] = useState(false);
 
   useEffect(() => {
     getTickets();
   }, []);
 
+  // Apply all filters and live-search on filter value/state change
+  useEffect(() => {
+    let filtered = [...apiTickets];
+    // Not fully paid filter
+    if (notPaidOnly) {
+      filtered = filtered.filter(t => !t.amountsCompleted);
+    }
+    // Multi-field search
+    if (globalSearch) {
+      let fields = searchFields.includes("all") ? ["name", "agent", "bookingCode", "ticketNumber", "iata", "phone", "methods"] : searchFields;
+      filtered = filtered.filter(ticket =>
+        fields.some(field => (ticket[field] || "").toString().toLowerCase().includes(globalSearch.toLowerCase()))
+      );
+    }
+
+    // Sorting logic
+    if (sortConfig.key) {
+      filtered.sort((a, b) => {
+        let aValue = a[sortConfig.key];
+        let bValue = b[sortConfig.key];
+
+        if (['profit', 'paidAmount', 'receivingAmountT', 'agentCost'].includes(sortConfig.key)) {
+            aValue = parseFloat(String(aValue || '0').replace(/[^\d.-]/g, ''));
+            bValue = parseFloat(String(bValue || '0').replace(/[^\d.-]/g, ''));
+        } else if (sortConfig.key === 'bookedOn') {
+            const dateA = aValue.split('/').reverse().join('-');
+            const dateB = bValue.split('/').reverse().join('-');
+            aValue = new Date(dateA);
+            bValue = new Date(dateB);
+        }
+
+        if (aValue < bValue) {
+          return sortConfig.direction === 'ascending' ? -1 : 1;
+        }
+        if (aValue > bValue) {
+          return sortConfig.direction === 'ascending' ? 1 : -1;
+        }
+        return 0;
+      });
+    }
+
+    setTickets(filtered);
+    setPage(0);
+    calculate(filtered);
+  }, [notPaidOnly, globalSearch, searchFields, apiTickets, sortConfig]);
+
   const getTickets = (dates = null) => {
     setLoading(true);
     let start = new Date();
-    //start.setMonth(start.getMonth() - 6);
     start.setDate(1);
     start = formatDate(start);
     let end = formatDate(new Date());
@@ -48,7 +100,7 @@ function Index() {
     ticketsService.getAll({ start, end, type }).then((tickets) => {
       setTickets(tickets);
       setApiTickets(tickets);
-      onGlobalFilterChange({ target: { value: "" } });
+      calculate(tickets);
       setLoading(false);
     });
   };
@@ -60,140 +112,8 @@ function Index() {
     getTickets({ start, end, type });
   };
 
-  const [filters, setFilters] = useState({
-    global: { value: null, matchMode: FilterMatchMode.CONTAINS },
-  });
-  const allFilters = [
-    "name",
-    "agent",
-    "bookingCode",
-    "cardNumber",
-    "ticketNumber",
-    "methods",
-    "paidAmount",
-    "receivingAmountT",
-    "profit",
-    "bookedOn",
-    "phone",
-    "iata",
-    "flight",
-    "travel1",
-    "travel2",
-  ];
-  const [filtersA, setFiltersA] = useState(allFilters);
-  const [globalFilterValue, setGlobalFilterValue] = useState("");
-
-  const onGlobalFilterChange = (e) => {
-    const value = e.target.value;
-    let _filters = { ...filters };
-
-    _filters["global"].value = value;
-
-    setFilters(_filters);
-    setGlobalFilterValue(value);
-  };
-
   const addNew = () => {
     Router.push("/tickets/add");
-  };
-
-  const applyFilters = (e) => {
-    let types = [
-      "all",
-      "agent",
-      "bookingCode",
-      "ticketNumber",
-      "iata",
-      "name",
-      "cardNumber",
-      "methods",
-      "travel1",
-      "travel2",
-    ];
-    let selected = parseInt(e.target.value);
-    if (selected !== 0) {
-      setFiltersA([types[selected]]);
-    } else {
-      setFiltersA(allFilters);
-    }
-  };
-
-  const filterProfitType = (e) => {
-    const isChecked = e.target.checked;
-    let totals = apiTickets;
-    if (isChecked) {
-      let newTickets = tickets.filter((t) => !t.amountsCompleted);
-      newTickets = newTickets.length > 0 ? newTickets : [];
-      setTickets([...newTickets]);
-      totals = newTickets;
-    } else {
-      setTickets([...apiTickets]);
-    }
-    calculate(totals);
-  };
-
-  const renderHeader = () => {
-    return (
-      <div className="flex justify-content-end">
-        <span className="p-input-icon-left">
-          <i className="pi pi-search" />
-          <InputText
-            value={globalFilterValue}
-            onChange={onGlobalFilterChange}
-            placeholder="Keyword Search"
-          />
-        </span>
-        <select
-          className="form-select"
-          aria-label="filters"
-          onChange={(e) => {
-            applyFilters(e);
-          }}
-        >
-          <option defaultValue value="0">
-            All
-          </option>
-          <option value="1">Agent Name</option>
-          <option value="2">PNR</option>
-          <option value="3">Ticket Number</option>
-          <option value="4">Issued By</option>
-          <option value="5">Passenger Name</option>
-          <option value="6">Card Number</option>
-          <option value="7">Payment Methods</option>
-        </select>
-        <input
-          className="ms-2"
-          type="checkbox"
-          id="profitType"
-          onChange={(e) => filterProfitType(e)}
-        />
-        &nbsp;Not Fully Paid
-        <Button
-          className="tb-btns"
-          type="button"
-          icon="fa fa-file-excel"
-          rounded
-          onClick={() => exportCSV(false)}
-          data-pr-tooltip="CSV"
-          severity="success"
-        />
-        <Button
-          className="tb-btns"
-          type="button"
-          icon="fa fa-plus"
-          rounded
-          onClick={() => addNew()}
-          data-pr-tooltip="CSV"
-          severity="primary"
-        />
-      </div>
-    );
-  };
-
-  const header = renderHeader();
-
-  const exportCSV = (selectionOnly) => {
-    dt.current.exportCSV({ selectionOnly });
   };
 
   const infoTicket = (ticket) => {
@@ -203,44 +123,6 @@ function Index() {
 
   const editTicket = (ticket) => {
     window.open("/tickets/edit/" + ticket.id, "_blank");
-  };
-
-  const actions = (e, ticket) => {
-    switch (parseInt(e?.value?.code)) {
-      case 1:
-        infoTicket(ticket);
-        break;
-      case 2:
-        downloadTicket(ticket);
-        break;
-      case 3:
-        editTicket(ticket);
-        break;
-      case 4:
-        confirmDeleteTicket(ticket);
-        break;
-      default:
-        infoTicket(ticket);
-        break;
-    }
-  };
-
-  const actionBodyTemplate = (rowData) => {
-    return (
-      <>
-        <Dropdown
-          onChange={(e) => actions(e, rowData)}
-          options={[
-            { name: "Info", code: "1" },
-            { name: "PDF", code: "2" },
-            { name: "Edit", code: "3" },
-            { name: "Delete", code: "4" },
-          ]}
-          optionLabel="name"
-          placeholder="Actions"
-        />
-      </>
-    );
   };
 
   const confirmDeleteTicket = (ticket) => {
@@ -288,7 +170,6 @@ function Index() {
 
     doc.line(10, row, 200, row);
     row += 7;
-
     doc.text("Data Acquisto", 10, row);
     doc.text(":", 60, row);
     doc.text(ticket.bookedOn, 65, row, { maxWidth: width }, null, "left");
@@ -306,28 +187,28 @@ function Index() {
     doc.text("Date Viaggio", 10, row);
     doc.text(":", 60, row);
     doc.text(ticket.dates, 65, row, { maxWidth: width }, null, "left");
-    ticket.dates.length > length ? (row += 10) : (row += 4);
+    ticket.dates && ticket.dates.length > length ? (row += 10) : (row += 4);
     doc.line(10, row, 200, row);
     row += 7;
 
     doc.text("Porto di partenza", 10, row);
     doc.text(":", 60, row);
     doc.text(ticket.travel1, 65, row, { maxWidth: width }, null, "left");
-    ticket.travel1.length > length ? (row += 10) : (row += 4);
+    ticket.travel1 && ticket.travel1.length > length ? (row += 10) : (row += 4);
     doc.line(10, row, 200, row);
     row += 7;
 
     doc.text("Porto di arrivo", 10, row);
     doc.text(":", 60, row);
     doc.text(ticket.travel2, 65, row, { maxWidth: width }, null, "left");
-    ticket.travel2.length > length ? (row += 10) : (row += 4);
+    ticket.travel2 && ticket.travel2.length > length ? (row += 10) : (row += 4);
     doc.line(10, row, 200, row);
     row += 7;
 
     doc.text("Numero del biglietto", 10, row);
     doc.text(":", 60, row);
     doc.text(ticket.ticketNumber, 65, row, { maxWidth: width }, null, "left");
-    ticket.ticketNumber.length > length ? (row += 10) : (row += 4);
+    ticket.ticketNumber && ticket.ticketNumber.length > length ? (row += 10) : (row += 4);
     doc.line(10, row, 200, row);
     row += 7;
 
@@ -362,14 +243,14 @@ function Index() {
     doc.text("Volo/Nave", 10, row);
     doc.text(":", 60, row);
     doc.text(ticket.flight, 65, row, { maxWidth: width }, null, "left");
-    ticket.flight.length > length ? (row += 10) : (row += 4);
+    ticket.flight && ticket.flight.length > length ? (row += 10) : (row += 4);
     doc.line(10, row, 200, row);
     row += 7;
 
     doc.text("Numero di telefono", 10, row);
     doc.text(":", 60, row);
     doc.text(ticket.phone, 65, row, { maxWidth: width }, null, "left");
-    ticket.phone.length > length ? (row += 10) : (row += 4);
+    ticket.phone && ticket.phone.length > length ? (row += 10) : (row += 4);
     doc.line(10, row, 200, row);
     row += 7;
 
@@ -386,77 +267,6 @@ function Index() {
       row += 7;
     }
 
-    /*const generateData = function () {
-      return [
-        {
-          A: "Nome",
-          B: ticket.name || "-",
-        },
-        {
-          A: "Data",
-          B: ticket.bookedOn || "-",
-        },
-        {
-          A: "Codice prenotazione",
-          B: ticket.bookingCode || "-",
-        },
-        { A: "Date del Viaggio", B: ticket.dates },
-        {
-          A: "Porto di partenza",
-          B: ticket.travel1 || "-",
-        },
-        {
-          A: "Porto di arrivo",
-          B: ticket.travel2 || "-",
-        },
-        {
-          A: "Numero del biglietto",
-          B: ticket.ticketNumber || "-",
-        },
-        {
-          A: "Pagato",
-          B: ticket.receivingAmount1
-            ? parseFloat(
-                parseFloat(ticket.receivingAmount1) +
-                  parseFloat(ticket.receivingAmount2) +
-                  parseFloat(ticket.receivingAmount3)
-              ).toFixed(2) + " EUR"
-            : "-",
-        },
-        {
-          A: "Metodo di pagamento",
-          B: ticket.paymentMethod || "-",
-        },
-        {
-          A: "Volo",
-          B: ticket.flight || "-",
-        },
-        {
-          A: "Numero di telefono",
-          B: ticket.phone || "-",
-        },
-      ];
-    };
-
-    function createHeaders(keys) {
-      let result = [];
-      for (let i = 0; i < keys.length; i += 1) {
-        result.push({
-          id: keys[i],
-          name: keys[i],
-          prompt: keys[i],
-          width: keys[i] === "A" ? 70 : 170,
-          align: "center",
-          padding: 0,
-        });
-      }
-      return result;
-      //return keys;
-    }
-
-    doc.table(10, row, generateData(), createHeaders(["A", "B"]), {
-      autoSize: false,
-    });*/
     row = 280;
     doc.setFontSize(8);
     doc.text("Indus Viaggi", 200, row, null, null, "right");
@@ -479,7 +289,6 @@ function Index() {
   };
 
   const deleteTicket = () => {
-    //console.log("delete", ticket);
     ticketsService.delete(ticket.id).then(() => {
       setTickets((tickets) => tickets.filter((x) => x.id !== ticket.id));
       setApiTickets((tickets) => tickets.filter((x) => x.id !== ticket.id));
@@ -487,43 +296,7 @@ function Index() {
     });
   };
 
-  const deleteTicketDialogFooter = (
-    <div>
-      <Button
-        label="No"
-        icon="fa fa-times"
-        className="p-button-text"
-        onClick={hideDeleteTicketDialog}
-      />
-      <Button
-        label="Yes"
-        icon="fa fa-check"
-        className="p-button-text"
-        onClick={deleteTicket}
-      />
-    </div>
-  );
-  const footerGroup = (
-    <ColumnGroup>
-      <Row>
-        <Column
-          footer="Totals:"
-          colSpan={6}
-          footerStyle={{ textAlign: "right" }}
-        />
-        <Column footer={totals[0]} />
-        <Column footer={totals[1]} />
-        <Column footer={totals[2]} />
-        <Column />
-        <Column />
-        <Column />
-        <Column footer={totals[3]} />
-      </Row>
-    </ColumnGroup>
-  );
-
   const calculate = (data) => {
-    //console.log(data);
     let tp = 0;
     let tc = 0;
     let tr = 0;
@@ -538,7 +311,6 @@ function Index() {
       tr += parseFloat(ttr);
       ta += parseFloat(tta);
     }
-
     setTotals([
       "€ " + tp.toFixed(2),
       "€ " + tc.toFixed(2),
@@ -547,286 +319,320 @@ function Index() {
     ]);
   };
 
+  // Restore exportCSV logic
+  const exportCSV = () => {
+    if (!tickets.length) return;
+    const fields = Object.keys(tickets[0]);
+    const csvRows = [
+      fields.join(","),
+      ...tickets.map(row =>
+        fields.map(field => JSON.stringify(row[field] ?? "")).join(",")
+      ),
+    ];
+    const csvData = csvRows.join("\n");
+    const blob = new Blob([csvData], { type: "text/csv" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'tickets_export.csv';
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
+  // PAGINATION
+  const pageTickets = tickets.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+  const totalPages = Math.ceil(tickets.length / rowsPerPage);
+
   return (
     <Layout>
-      <div className="container">
-        <div className="row">
-          <div className="col-sm-2">
-            <label htmlFor="type">Type:</label>
-            <div className="input-group">
-              <select id="type" className="form-select">
-                <option defaultValue value="bookedOn">
-                  Issue Date
-                </option>
-                <option value="receivingAllDates">All Amounts Dates</option>
-                <option value="receivingAmount1Date">Amount 1 Date</option>
-                <option value="receivingAmount2Date">Amount 2 Date</option>
-                <option value="receivingAmount3Date">Amount 3 Date</option>
-              </select>
-            </div>
-          </div>
-          <div className="col-sm-4">
-            <label htmlFor="start">From Date:</label>
-            <div className="input-group">
-              <input
-                type="date"
-                className="form-control"
-                id="start"
-                defaultValue={dates.start}
-                placeholder="From"
-              />
-            </div>
-          </div>
-          <div className="col-sm-4">
-            <label htmlFor="end">To Date:</label>
-            <div className="input-group">
-              <input
-                type="date"
-                className="form-control"
-                id="end"
-                defaultValue={dates.end}
-                placeholder="To"
-              />
-            </div>
-          </div>
-          <div className="col-sm-2">
-            <button
-              type="submit"
-              className="btn btn-block btn-primary width-search"
-              onClick={() => {
-                search();
-              }}
+      {/* Filter/Search bar with Material UI and working date filtering */}
+      <Paper elevation={2} sx={{ p: 2, mb: 3 }}>
+        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'end', width: '100%' }}>
+          <Box sx={{ minWidth: 140 }}>
+            <Typography fontWeight={500} sx={{ mb: 1 }}>Type:</Typography>
+            <select
+              id="type"
+              className="form-select"
+              value={dates.type || "bookedOn"}
+              onChange={e => setDates(d => ({ ...d, type: e.target.value }))}
+              style={{ width: '100%', minWidth: '120px' }}
             >
-              <i className="fa fa-search"></i> Search
-            </button>
-          </div>
-        </div>
-      </div>
-      <br />
-      <div className="card">
-        <DataTable
-          paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-          rowsPerPageOptions={[25, 50, 100, 250, 500]}
-          currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries"
-          loading={loading}
-          size="small"
-          tableStyle={{ minWidth: "100rem" }}
-          ref={dt}
-          onValueChange={(filteredData) => {
-            calculate(filteredData);
-          }}
-          value={tickets}
-          paginator
-          rows={25}
-          dataKey="id"
-          filters={filters}
-          csvSeparator=";"
-          globalFilterFields={filtersA}
-          header={header}
-          footerColumnGroup={footerGroup}
-          emptyMessage="No tickets found."
-        >
-          <Column
-            style={{ maxWidth: "6rem" }}
-            header="Actions"
-            body={actionBodyTemplate}
-            exportable={false}
-          ></Column>
-          <Column
-            style={{ width: "5rem", textAlign: "center" }}
-            field="idP"
-            header="Id"
-          />
-          <Column
-            style={{ maxWidth: "8rem" }}
-            field="name"
-            sortable
-            header="Passenger"
-          />
-          <Column hidden field="refund" sortable header="Refund" />
-          <Column hidden field="refundDate" sortable header="Refund Date" />
-          <Column hidden field="penality" sortable header="Penality" />
-          <Column hidden field="returned" sortable header="Returned" />
-          <Column hidden field="returnedDate" sortable header="Returned Date" />
-          <Column hidden field="refundUsed" sortable header="Refund Used" />
-          <Column field="bookingCode" sortable header="PNR" />
-          <Column field="ticketNumber" sortable header="Ticket" />
-          <Column field="iata" sortable header="Issued by" />
-          <Column field="profit" sortable header="Profit" />
-          <Column field="paidAmount" sortable header="Cost" />
-          <Column field="receivingAmountT" sortable header="Tot. Received" />
-          <Column field="methods" sortable header="Pay. Methods" />
-          <Column field="bookedOn" sortable header="Issue Date" />
-          <Column field="agent" sortable header="Agent" />
-          <Column field="agentCost" sortable header="Ag. Cost" />
-          <Column hidden field="phone" sortable header="Phone" />
-          <Column hidden field="cardNumber" sortable header="Card Number" />
-          <Column hidden field="flight" sortable header="Flight" />
-          <Column hidden field="receivingAmount1" header="receivingAmount 1" />
-          <Column
-            hidden
-            field="receivingAmount1Date"
-            header="receiving Amount 1 Date"
-          />
-          <Column hidden field="receivingAmount2" header="receivingAmount 2" />
-          <Column
-            hidden
-            field="receivingAmount2Date"
-            header="receiving Amount 2 Date"
-          />
-          <Column
-            hidden
-            field="receivingAmount2Method"
-            header="receiving Amount 2 Method"
-          />
-          <Column hidden field="receivingAmount3" header="receivingAmount 3" />
-          <Column
-            hidden
-            field="receivingAmount3Date"
-            header="receiving Amount 3 Date"
-          />
-          <Column
-            hidden
-            field="receivingAmount3Method"
-            header="receiving Amount 3 Method"
-          />
-          <Column hidden field="travel1" header="travel 1" />
-          <Column hidden field="travel2" header="travel 2" />
-          <Column hidden field="dates" header="dates" />
-        </DataTable>
-      </div>
-      <Dialog
-        visible={deleteTicketDialog}
-        header="Confirm"
-        modal
-        footer={deleteTicketDialogFooter}
-        onHide={hideDeleteTicketDialog}
-      >
-        <div className="confirmation-content">
-          <i className="fa fa-triangle mr-3" />
-          {ticket && (
+              <option value="bookedOn">Issue Date</option>
+              <option value="receivingAllDates">All Amounts Dates</option>
+              <option value="receivingAmount1Date">Amount 1 Date</option>
+              <option value="receivingAmount2Date">Amount 2 Date</option>
+              <option value="receivingAmount3Date">Amount 3 Date</option>
+            </select>
+          </Box>
+          <Box sx={{ minWidth: 140, flex: 1 }}>
+            <Typography fontWeight={500} sx={{ mb: 1 }}>From Date:</Typography>
+            <input
+              type="date"
+              className="form-control"
+              id="start"
+              value={dates.start || ''}
+              onChange={e => setDates(d => ({ ...d, start: e.target.value }))}
+              placeholder="From"
+              style={{ width: '100%' }}
+            />
+          </Box>
+          <Box sx={{ minWidth: 140, flex: 1 }}>
+            <Typography fontWeight={500} sx={{ mb: 1 }}>To Date:</Typography>
+            <input
+              type="date"
+              className="form-control"
+              id="end"
+              value={dates.end || ''}
+              onChange={e => setDates(d => ({ ...d, end: e.target.value }))}
+              placeholder="To"
+              style={{ width: '100%' }}
+            />
+          </Box>
+          {/* Search Box */}
+          <Box sx={{ minWidth: 180, flex: 2 }}>
+            <Typography fontWeight={500} sx={{ mb: 1 }}>Search</Typography>
+            <input
+              type="text"
+              className="form-control"
+              id="searchText"
+              placeholder="Enter search keyword"
+              style={{ width: '100%' }}
+              onChange={e => setGlobalSearch(e.target.value)}
+            />
+          </Box>
+          {/* Search Field */}
+          <Box sx={{ minWidth: 180 }}>
+            <FormControl fullWidth size="small" sx={{ mb: 1 }}>
+              <InputLabel id="fields-multi-label">Fields</InputLabel>
+              <Select
+                labelId="fields-multi-label"
+                id="searchFields"
+                multiple
+                value={searchFields}
+                onChange={e => {
+                  const value = e.target.value;
+                  setSearchFields(typeof value === 'string' ? value.split(',') : value.length ? value : ["all"]);
+                }}
+                input={<OutlinedInput label="Fields" />}
+                renderValue={selected => selected.includes("all") ? "All" : selected.join(", ")}
+              >
+                {["all", "name", "agent", "bookingCode", "ticketNumber", "iata", "phone", "methods"].map(field => (
+                  <MenuItem key={field} value={field}>
+                    <Checkbox checked={searchFields.indexOf(field) > -1} />
+                    <ListItemText primary={{
+                      all: "All",
+                      name: "Name",
+                      agent: "Agent",
+                      bookingCode: "PNR",
+                      ticketNumber: "Ticket",
+                      iata: "Issued By",
+                      phone: "Phone",
+                      methods: "Payment Method"
+                    }[field] || field} />
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Box>
+          {/* Not Fully Paid Checkbox */}
+          <Box sx={{ minWidth: 150, display: 'flex', alignItems: 'center', height: 48 }}>
+            <input type="checkbox" id="notPaidChk" checked={notPaidOnly} onChange={e => setNotPaidOnly(e.target.checked)} style={{ marginRight: 4 }} />
+            <label htmlFor="notPaidChk" style={{ fontWeight: 500, userSelect: 'none', cursor: 'pointer' }}>Not Fully Paid</label>
+          </Box>
+          <Box sx={{ minWidth: 120, alignSelf: 'flex-end' }}>
+            <Button
+              variant="contained"
+              color="primary"
+              fullWidth
+              onClick={search}
+              sx={{ height: 50 }}
+              startIcon={<InfoIcon />}
+            >
+              Search
+            </Button>
+          </Box>
+        </Box>
+      </Paper>
+
+      {/* Totals Summary */}
+      <Paper elevation={1} style={{ margin: "10px 0 20px 0", padding: "16px", backgroundColor: "#f5f5f5", display: "flex", gap: 24, flexWrap: "wrap", alignItems: "center", justifyContent: "space-between" }}>
+        <Box sx={{ display: 'flex', gap: 3, alignItems: 'center', flexWrap: 'wrap' }}>
+          <Typography variant="body1" sx={{ fontWeight: 'bold', border: '1px solid #bdbdbd', padding: '2px 10px', borderRadius: '16px', background: '#e0e0e0' }}>Tickets: {tickets.length}</Typography>
+          <Typography variant="body2">Profit: {totals[0]}</Typography>
+          <Typography variant="body2">Cost: {totals[1]}</Typography>
+          <Typography variant="body2">Received: {totals[2]}</Typography>
+          <Typography variant="body2">Agent Cost: {totals[3]}</Typography>
+        </Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <FormControl size="small" sx={{ minWidth: 120 }}>
+            <InputLabel>Sort By</InputLabel>
+            <Select
+              value={sortConfig.key}
+              label="Sort By"
+              onChange={e => setSortConfig({ ...sortConfig, key: e.target.value })}
+            >
+              <MenuItem value="bookedOn">Issue Date</MenuItem>
+              <MenuItem value="profit">Profit</MenuItem>
+              <MenuItem value="paidAmount">Cost</MenuItem>
+              <MenuItem value="receivingAmountT">Received</MenuItem>
+              <MenuItem value="agentCost">Agent Cost</MenuItem>
+            </Select>
+          </FormControl>
+          <Tooltip title={`Sort ${sortConfig.direction === 'ascending' ? 'Descending' : 'Ascending'}`}>
+            <IconButton onClick={() => setSortConfig({ ...sortConfig, direction: sortConfig.direction === 'ascending' ? 'descending' : 'ascending' })}>
+              {sortConfig.direction === 'ascending' ? <ArrowUpwardIcon /> : <ArrowDownwardIcon />}
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Export Excel">
+            <IconButton color="success" onClick={() => exportCSV && exportCSV(false)}>
+              <DownloadIcon />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Add Ticket">
+            <IconButton color="primary" onClick={addNew}>
+              <AddIcon />
+            </IconButton>
+          </Tooltip>
+        </Box>
+      </Paper>
+
+      {/* Ticket Cards List */}
+      <Box sx={{ width: '100%', minHeight: 200, position: 'relative' }}>
+        {loading && (
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 200, width: '100%' }}>
             <span>
-              Are you sure you want to delete <b>{ticket.name}</b>&apos;s
-              ticket?
+              <svg width="48" height="48" viewBox="0 0 48 48"><circle cx="24" cy="24" r="20" fill="none" stroke="#1976d2" strokeWidth="4" strokeDasharray="125.6" strokeDashoffset="62.8"><animateTransform attributeName="transform" type="rotate" repeatCount="indefinite" from="0 24 24" to="360 24 24" dur="1s"/></circle></svg>
             </span>
-          )}
-        </div>
-      </Dialog>
-      <Dialog
-        visible={ticketDialog}
-        style={{ width: "60%" }}
-        header="Details"
-        modal
-        className="p-fluid"
-        onHide={() => setTicketDialog(false)}
-      >
-        {ticket && (
-          <table className="table">
-            <tbody>
-              <tr>
-                <td scope="col">Passenger:</td>
-                <td scope="col">{ticket.name}</td>
-              </tr>
-              <tr>
-                <td scope="col">Agent:</td>
-                <td scope="col">{ticket.agent}</td>
-              </tr>
-              <tr>
-                <td scope="col">PNR:</td>
-                <td scope="col">{ticket.bookingCode}</td>
-              </tr>
-              <tr>
-                <td scope="col">Ticket:</td>
-                <td scope="col">{ticket.ticketNumber}</td>
-              </tr>
-              <tr>
-                <td scope="col">Cost:</td>
-                <td scope="col">{ticket.paidAmount}</td>
-              </tr>
-              <tr>
-                <td scope="col">Receiving Amount/Date 1:</td>
-                <td scope="col">
-                  {ticket.receivingAmount1}
-                  {ticket.receivingAmount1Date &&
-                    " - " + ticket.receivingAmount1Date}
-                  {" - " + ticket.paymentMethod}
-                </td>
-              </tr>
-              <tr>
-                <td scope="col">Receiving Amount/Date/Method 2:</td>
-                <td scope="col">
-                  {ticket.receivingAmount2}
-                  {ticket.receivingAmount2Date &&
-                    " - " + ticket.receivingAmount2Date}
-                  {ticket.receivingAmount2Method &&
-                    " - " + ticket.receivingAmount2Method}
-                </td>
-              </tr>
-              <tr>
-                <td scope="col">Receiving Amount/Date/Method 3:</td>
-                <td scope="col">
-                  {ticket.receivingAmount3}
-                  {ticket.receivingAmount3Date &&
-                    " - " + ticket.receivingAmount3Date}
-                  {ticket.receivingAmount3Method &&
-                    " - " + ticket.receivingAmount3Method}
-                </td>
-              </tr>
-              <tr>
-                <td scope="col">Profit:</td>
-                <td scope="col">{ticket.profit}</td>
-              </tr>
-              <tr>
-                <td scope="col">Issue Date:</td>
-                <td scope="col">{ticket.bookedOn}</td>
-              </tr>
-              <tr>
-                <td scope="col">Travel1:</td>
-                <td scope="col">{ticket.travel1}</td>
-              </tr>
-              <tr>
-                <td scope="col">Travel2:</td>
-                <td scope="col">{ticket.travel2}</td>
-              </tr>
-              <tr>
-                <td scope="col">Flight/Vessel:</td>
-                <td scope="col">{ticket.flight}</td>
-              </tr>
-              <tr>
-                <td scope="col">Dates:</td>
-                <td scope="col">{ticket.dates}</td>
-              </tr>
-              <tr>
-                <td scope="col">Phone:</td>
-                <td scope="col">{ticket.phone}</td>
-              </tr>
-              {ticket.refund && (
-                <>
-                  <tr>
-                    <td scope="col">Refund/Date/Penality/Used:</td>
-                    <td scope="col">
-                      {ticket.refund + " - "}
-                      {ticket.refundDate && ticket.refundDate + " - "}
-                      {ticket.penality + " - "}
-                      {ticket.refundUsed}
-                    </td>
-                  </tr>
-                  <tr>
-                    <td scope="col">Return/Date:</td>
-                    <td scope="col">
-                      {ticket.returned + " - "}
-                      {ticket.returnedDate && ticket.returnedDate}
-                    </td>
-                  </tr>
-                </>
-              )}
-              <tr>
-                <td scope="col">Extra Notes:</td>
-                <td scope="col">{ticket.desc}</td>
-              </tr>
-            </tbody>
-          </table>
+            <Typography variant="body1" color="primary" sx={{ mt: 1 }}>Loading tickets...</Typography>
+          </Box>
         )}
+        {!loading && pageTickets.length === 0 && (
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 200, width: '100%' }}>
+            <InfoIcon sx={{ color: 'info.main', fontSize: 48, mb: 1 }} />
+            <Typography variant="h6" color="text.secondary">No tickets found, try changing filters</Typography>
+          </Box>
+        )}
+        {!loading && pageTickets.map(ticket => (
+          <Paper
+            key={ticket.id}
+            elevation={2}
+            sx={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              boxSizing: 'border-box',
+              p: 1,
+              mb: 1,
+              borderRadius: 1,
+              overflow: 'hidden',
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', height: '100%', overflow: 'hidden' }}>
+              <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
+                <Tooltip title={ticket.name}><Chip label={ticket.name.length > 25 ? ticket.name.slice(0, 25) + '…' : ticket.name} color="primary" variant="outlined" sx={{ width: 200, overflow: 'hidden', textOverflow: 'ellipsis' }} /></Tooltip>
+                <Tooltip title={ticket.bookingCode}><Chip label={ticket.bookingCode.length > 25 ? ticket.bookingCode.slice(0, 25) + '…' : ticket.bookingCode} color="secondary" variant="outlined" sx={{ width: 100, overflow: 'hidden', textOverflow: 'ellipsis' }} /></Tooltip>
+                <Typography sx={{ fontWeight: 500 }}>{ticket.ticketNumber}</Typography>
+                <Typography>{ticket.iata}</Typography>
+                <Typography
+                  color={Number(ticket.profit.replace(/[^\d.-]/g, '')) < 0 ? 'error.main' : 'success.main'}>
+                  {ticket.profit}
+                </Typography>
+                <Typography>{ticket.paidAmount}</Typography>
+                <Typography>{ticket.receivingAmountT}</Typography>
+                <Typography>{ticket.bookedOn}</Typography>
+                {ticket.agent && ticket.agent.trim() !== "" && (
+                  <Tooltip title={ticket.agent}><Chip label={ticket.agent.length > 25 ? ticket.agent.slice(0, 25) + '…' : ticket.agent} color="info" variant="outlined" sx={{ width: 100, overflow: 'hidden', textOverflow: 'ellipsis' }} /></Tooltip>
+                )}
+                {ticket.agent && ticket.agent.trim() !== "" && (
+                  <Typography>{ticket.agentCost}</Typography>
+                )}
+                <Typography variant='body2'>{ticket.methods}</Typography>
+              </Stack>
+              <Stack direction="row">
+                <Tooltip title="Info"><IconButton onClick={() => infoTicket(ticket)}><InfoIcon /></IconButton></Tooltip>
+                <Tooltip title="Edit"><IconButton onClick={() => editTicket(ticket)}><EditIcon color="primary" /></IconButton></Tooltip>
+                <Tooltip title="Delete"><IconButton onClick={() => confirmDeleteTicket(ticket)}><DeleteIcon color="secondary" /></IconButton></Tooltip>
+                <Tooltip title="Export PDF"><IconButton onClick={() => downloadTicket(ticket)}><PictureAsPdfIcon color="error" /></IconButton></Tooltip>
+              </Stack>
+            </Box>
+          </Paper>
+        ))}
+      </Box>
+      {/* Pagination */}
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', my: 3, gap: 3 }}>
+        <Typography sx={{ mr: 1 }}>Rows per page:</Typography>
+        <select
+          value={rowsPerPage}
+          onChange={e => {
+            setRowsPerPage(Number(e.target.value));
+            setPage(0);
+          }}
+          style={{ height: 28, marginRight: 16 }}
+        >
+          {[25, 50, 100, 200, 500].map(n => (
+            <option key={n} value={n}>{n}</option>
+          ))}
+        </select>
+        <Button variant="outlined" size="small" disabled={page === 0} onClick={() => setPage(page - 1)}>Prev</Button>
+        <Typography variant="body2" sx={{ lineHeight: 2.5 }}>
+          Page {page + 1} of {totalPages}
+        </Typography>
+        <Button variant="outlined" size="small" disabled={page + 1 >= totalPages} onClick={() => setPage(page + 1)}>Next</Button>
+      </Box>
+      {/* Dialog for Details, preserving ALL fields */}
+      <Dialog open={ticketDialog} onClose={() => setTicketDialog(false)} maxWidth="lg" fullWidth>
+        <DialogTitle>Details</DialogTitle>
+        <DialogContent>
+          {ticket && (
+            <Table><TableBody>
+              <TableRow><TableCell>Passenger:</TableCell><TableCell>{ticket.name}</TableCell></TableRow>
+              <TableRow><TableCell>Agent:</TableCell><TableCell>{ticket.agent}</TableCell></TableRow>
+              <TableRow><TableCell>PNR:</TableCell><TableCell>{ticket.bookingCode}</TableCell></TableRow>
+              <TableRow><TableCell>Ticket:</TableCell><TableCell>{ticket.ticketNumber}</TableCell></TableRow>
+              <TableRow><TableCell>Cost:</TableCell><TableCell>{ticket.paidAmount}</TableCell></TableRow>
+              <TableRow><TableCell>Receiving Amount 1:</TableCell><TableCell>{ticket.receivingAmount1}</TableCell></TableRow>
+              <TableRow><TableCell>Receiving Date 1:</TableCell><TableCell>{ticket.receivingAmount1Date}</TableCell></TableRow>
+              <TableRow><TableCell>Payment Method:</TableCell><TableCell>{ticket.paymentMethod}</TableCell></TableRow>
+              <TableRow><TableCell>Receiving Amount 2:</TableCell><TableCell>{ticket.receivingAmount2}</TableCell></TableRow>
+              <TableRow><TableCell>Receiving Date 2:</TableCell><TableCell>{ticket.receivingAmount2Date}</TableCell></TableRow>
+              <TableRow><TableCell>Receiving Method 2:</TableCell><TableCell>{ticket.receivingAmount2Method}</TableCell></TableRow>
+              <TableRow><TableCell>Receiving Amount 3:</TableCell><TableCell>{ticket.receivingAmount3}</TableCell></TableRow>
+              <TableRow><TableCell>Receiving Date 3:</TableCell><TableCell>{ticket.receivingAmount3Date}</TableCell></TableRow>
+              <TableRow><TableCell>Receiving Method 3:</TableCell><TableCell>{ticket.receivingAmount3Method}</TableCell></TableRow>
+              <TableRow><TableCell>Profit:</TableCell><TableCell>{ticket.profit}</TableCell></TableRow>
+              <TableRow><TableCell>Issue Date:</TableCell><TableCell>{ticket.bookedOn}</TableCell></TableRow>
+              <TableRow><TableCell>Travel1:</TableCell><TableCell>{ticket.travel1}</TableCell></TableRow>
+              <TableRow><TableCell>Travel2:</TableCell><TableCell>{ticket.travel2}</TableCell></TableRow>
+              <TableRow><TableCell>Flight/Vessel:</TableCell><TableCell>{ticket.flight}</TableCell></TableRow>
+              <TableRow><TableCell>Dates:</TableCell><TableCell>{ticket.dates}</TableCell></TableRow>
+              <TableRow><TableCell>Phone:</TableCell><TableCell>{ticket.phone}</TableCell></TableRow>
+              {ticket.refund && <TableRow><TableCell>Refund:</TableCell><TableCell>{ticket.refund}</TableCell></TableRow>}
+              {ticket.refundDate && <TableRow><TableCell>Refund Date:</TableCell><TableCell>{ticket.refundDate}</TableCell></TableRow>}
+              {ticket.penality && <TableRow><TableCell>Penalty:</TableCell><TableCell>{ticket.penality}</TableCell></TableRow>}
+              {ticket.returned && <TableRow><TableCell>Returned:</TableCell><TableCell>{ticket.returned}</TableCell></TableRow>}
+              {ticket.returnedDate && <TableRow><TableCell>Returned Date:</TableCell><TableCell>{ticket.returnedDate}</TableCell></TableRow>}
+              {ticket.refundUsed && <TableRow><TableCell>Refund Used:</TableCell><TableCell>{ticket.refundUsed}</TableCell></TableRow>}
+              {ticket.agentCost && <TableRow><TableCell>Agent Cost:</TableCell><TableCell>{ticket.agentCost}</TableCell></TableRow>}
+              {ticket.methods && <TableRow><TableCell>Payment Methods:</TableCell><TableCell>{ticket.methods}</TableCell></TableRow>}
+              {ticket.cardNumber && <TableRow><TableCell>Card Number:</TableCell><TableCell>{ticket.cardNumber}</TableCell></TableRow>}
+              {ticket.desc && <TableRow><TableCell>Extra Notes:</TableCell><TableCell>{ticket.desc}</TableCell></TableRow>}
+            </TableBody></Table>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setTicketDialog(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+      {/* Dialog for Confirm Delete */}
+      <Dialog open={deleteTicketDialog} onClose={hideDeleteTicketDialog}>
+        <DialogTitle>Confirm</DialogTitle>
+        <DialogContent>
+          {ticket && <Typography>Are you sure you want to delete <b>{ticket.name}</b> ticket?</Typography>}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={hideDeleteTicketDialog}>No</Button>
+          <Button color="error" onClick={deleteTicket}>Yes</Button>
+        </DialogActions>
       </Dialog>
     </Layout>
   );

@@ -1,86 +1,68 @@
 import { Layout } from "components/expenses";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import Router from "next/router";
-import { formatDate, expensesService, ticketsService } from "../../services";
-import { DataTable } from "primereact/datatable";
-import { Column } from "primereact/column";
-import { ColumnGroup } from "primereact/columngroup";
-import { Row } from "primereact/row";
-import { InputText } from "primereact/inputtext";
-import { Dropdown } from "primereact/dropdown";
-import { FilterMatchMode } from "primereact/api";
-import { Button } from "primereact/button";
-import { Dialog } from "primereact/dialog";
-import { Tag } from "primereact/tag";
-export default Index;
+import { formatDate, expensesService } from "../../services";
+import {
+  Paper, Typography, Box, Stack, IconButton, Tooltip, Chip, Button, CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions
+} from "@mui/material";
+import AddIcon from '@mui/icons-material/Add';
+import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
+import DownloadIcon from '@mui/icons-material/Download';
+import InfoIcon from "@mui/icons-material/Info";
 
-function Index() {
+export default function ExpensesPage() {
   const [expenses, setExpenses] = useState(null);
-  const dt = useRef(null);
-  const [loading, setLoading] = useState(false);
   const [expense, setExpense] = useState(null);
-  const [deleteExpenseDialog, setDeleteExpenseDialog] = useState(false);
-  const [dates, setDates] = useState({
-    start: "",
-    end: "",
-    type: "",
-  });
+  const [deleteDialog, setDeleteDialog] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [dates, setDates] = useState({ start: "", end: "", type: "paymentDate" });
   const [totals, setTotals] = useState([0]);
-  const [filters, setFilters] = useState({
-    global: { value: null, matchMode: FilterMatchMode.CONTAINS },
-  });
-  const allFilters = [
-    "title",
-    "desc",
-    "category",
-    "subcategory",
-    "type",
-    "paymentMethod",
-    "amount",
-    "paymentDate",
-    "status",
-  ];
-  const [filtersA, setFiltersA] = useState(allFilters);
-  const [globalFilterValue, setGlobalFilterValue] = useState("");
-
-  const onGlobalFilterChange = (e) => {
-    const value = e.target.value;
-    let _filters = { ...filters };
-
-    _filters["global"].value = value;
-
-    setFilters(_filters);
-    setGlobalFilterValue(value);
-  };
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(50);
+  const [searchField, setSearchField] = useState("all");
+  const [globalSearch, setGlobalSearch] = useState("");
 
   useEffect(() => {
     getExpenses();
   }, []);
 
-  const getExpenses = (dates = null) => {
+  useEffect(() => {
+    if (!expenses) return;
+    let filtered = [...expenses];
+    if (globalSearch && searchField !== "all") {
+      filtered = filtered.filter(exp => (exp[searchField] || "").toString().toLowerCase().includes(globalSearch.toLowerCase()));
+    } else if (globalSearch && searchField === "all") {
+      filtered = filtered.filter(exp => [
+        "title", "desc", "category", "subcategory", "type", "paymentMethod", "amount", "paymentDate", "status"
+      ].some(field => (exp[field] || "").toString().toLowerCase().includes(globalSearch.toLowerCase())));
+    }
+    setFilteredExpenses(filtered);
+    setPage(0);
+    calculate(filtered);
+  }, [globalSearch, searchField, expenses]);
+  const [filteredExpenses, setFilteredExpenses] = useState([]);
+
+  const getExpenses = (customDates = null) => {
     setLoading(true);
     let start = new Date();
-    //start.setMonth(start.getMonth() - 6);
     start.setDate(1);
     start = formatDate(start);
     let end = formatDate(new Date());
     let type = "paymentDate";
-    if (dates) {
-      start = dates.start;
-      end = dates.end;
-      type = dates.type;
+    if (customDates) {
+      start = customDates.start;
+      end = customDates.end;
+      type = customDates.type;
     } else {
       setDates({ start, end, type });
     }
-    expensesService.getAll({ start, end, type }).then((res) => {
+    expensesService.getAll({ start, end, type }).then(res => {
       setExpenses(res);
-      onGlobalFilterChange({ target: { value: "" } });
+      setFilteredExpenses(res);
+      calculate(res);
       setLoading(false);
     });
-  };
-
-  const addNew = () => {
-    Router.push("/expenses/add");
   };
 
   const search = () => {
@@ -90,286 +72,168 @@ function Index() {
     getExpenses({ start, end, type });
   };
 
-  const renderHeader = () => {
-    return (
-      <div className="flex justify-content-end">
-        <div className="flex justify-content-end">
-          <span className="p-input-icon-left">
-            <i className="pi pi-search" />
-            <InputText
-              value={globalFilterValue}
-              onChange={onGlobalFilterChange}
-              placeholder="Keyword Search"
-            />
-          </span>
-          <Button
-            className="tb-btns"
-            type="button"
-            icon="fa fa-file-excel"
-            rounded
-            onClick={() => exportCSV(false)}
-            data-pr-tooltip="CSV"
-            severity="success"
-          />
-          <Button
-            className="tb-btns"
-            type="button"
-            icon="fa fa-plus"
-            rounded
-            onClick={() => addNew()}
-            data-pr-tooltip="CSV"
-            severity="primary"
-          />
-        </div>
-      </div>
-    );
-  };
-  const header = renderHeader();
-
-  const footerGroup = (
-    <ColumnGroup>
-      <Row>
-        <Column
-          footer="Totals:"
-          colSpan={5}
-          footerStyle={{ textAlign: "right" }}
-        />
-        <Column footer={totals[0]} />
-        <Column />
-        <Column />
-        <Column />
-        <Column />
-        <Column />
-      </Row>
-    </ColumnGroup>
-  );
-
-  const typeBodyTemplate = (expense) => {
-    return <Tag value={expense.type} severity={getSeverity(expense, 1)}></Tag>;
+  const addNew = () => {
+    Router.push("/expenses/add");
   };
 
-  const statusBodyTemplate = (expense) => {
-    return (
-      <Tag value={expense.status} severity={getSeverity(expense, 2)}></Tag>
-    );
+  const editExpense = (expense) => {
+    Router.push(`/expenses/edit/${expense.id}`);
   };
 
-  const getSeverity = (expense, field) => {
-    if (field === 1) {
-      switch (expense.type) {
-        case "Ingress":
-          return "success";
-
-        case "Egress":
-          return "warning";
-
-        default:
-          return null;
-      }
-    } else if (field === 2) {
-      switch (expense.status) {
-        case "Completed":
-          return "success";
-
-        case "Pending":
-          return "warning";
-
-        default:
-          return null;
-      }
-    }
+  const confirmDeleteExpense = (exp) => {
+    setExpense(exp);
+    setDeleteDialog(true);
   };
 
-  const exportCSV = (selectionOnly) => {
-    dt.current.exportCSV({ selectionOnly });
-  };
-
-  const confirmDeleteExpense = (expense) => {
-    setExpense(expense);
-    setDeleteExpenseDialog(true);
-  };
-
-  const hideDeleteExpenseDialog = () => {
-    setDeleteExpenseDialog(false);
-  };
-
-  const deleteTicket = () => {
-    //console.log("delete", ticket);
+  const deleteExpense = () => {
     expensesService.delete(expense.id).then(() => {
-      setExpenses((expenses) => expenses.filter((x) => x.id !== expense.id));
-      hideDeleteExpenseDialog();
+      setExpenses((exps) => exps.filter((x) => x.id !== expense.id));
+      setDeleteDialog(false);
     });
   };
 
-  const deleteTicketDialogFooter = (
-    <div>
-      <Button
-        label="No"
-        icon="fa fa-times"
-        className="p-button-text"
-        onClick={hideDeleteExpenseDialog}
-      />
-      <Button
-        label="Yes"
-        icon="fa fa-check"
-        className="p-button-text"
-        onClick={deleteTicket}
-      />
-    </div>
-  );
-
-  const editExpense = (expense) => {
-    window.open("/expenses/edit/" + expense.id, "_blank");
+  const exportCSV = () => {
+    if (!filteredExpenses.length) return;
+    const fields = ["type", "title", "paymentMethod", "amount", "paymentDate", "desc", "category", "subcategory", "status"];
+    const csvRows = [
+      fields.join(","),
+      ...filteredExpenses.map(row =>
+        fields.map(field => JSON.stringify(row[field] ?? "")).join(",")
+      ),
+    ];
+    const csvData = csvRows.join("\n");
+    const blob = new Blob([csvData], { type: "text/csv" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'expenses_export.csv';
+    a.click();
+    window.URL.revokeObjectURL(url);
   };
 
-  const actions = (e, expense) => {
-    switch (parseInt(e?.value?.code)) {
-      case 1:
-        editExpense(expense);
-        break;
-      case 2:
-        confirmDeleteExpense(expense);
-        break;
-      default:
-        editExpense(expense);
-        break;
-    }
-  };
-
-  const actionBodyTemplate = (rowData) => {
-    return (
-      <>
-        <Dropdown
-          onChange={(e) => actions(e, rowData)}
-          options={[
-            { name: "Edit", code: "1" },
-            { name: "Delete", code: "2" },
-          ]}
-          optionLabel="name"
-          placeholder="Actions"
-        />
-      </>
-    );
-  };
+  const pageExpenses = filteredExpenses.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+  const totalPages = Math.ceil(filteredExpenses.length / rowsPerPage);
 
   const calculate = (data) => {
-    //console.log(data);
     let ts = 0;
     for (let i = 0; i < data.length; i++) {
       let ttr = data[i].amount ? data[i].amount.replace("€ ", "") : 0;
       ts += parseFloat(ttr);
     }
-
     setTotals(["€ " + ts.toFixed(2)]);
   };
 
   return (
     <Layout>
-      <div className="container">
-        <div className="row">
-          <div className="col-md-2">
-            <label htmlFor="type">Type:</label>
-            <div className="input-group">
-              <select id="type" className="form-select">
-                <option value="paymentDate">Payment Date</option>
-              </select>
-            </div>
-          </div>
-          <div className="col-md-4">
-            <label htmlFor="start">From Date:</label>
-            <div className="input-group">
-              <input
-                type="date"
-                className="form-control"
-                id="start"
-                defaultValue={dates.start}
-                placeholder="From"
-              />
-            </div>
-          </div>
-          <div className="col-md-4">
-            <label htmlFor="end">To Date:</label>
-            <div className="input-group">
-              <input
-                type="date"
-                className="form-control"
-                id="end"
-                defaultValue={dates.end}
-                placeholder="To"
-              />
-            </div>
-          </div>
-          <div className="col-sm-2">
-            <button
-              type="submit"
-              className="btn btn-block btn-primary width-search"
-              onClick={() => {
-                search();
-              }}
-            >
-              <i className="fa fa-search"></i> Search
-            </button>
-          </div>
-        </div>
-      </div>
-      <br />
-      <div className="card">
-        <DataTable
-          paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-          rowsPerPageOptions={[25, 50, 100, 250, 500]}
-          currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries"
-          loading={loading}
-          size="small"
-          tableStyle={{ minWidth: "100rem" }}
-          ref={dt}
-          onValueChange={(filteredData) => {
-            calculate(filteredData);
+      <Paper elevation={2} sx={{ p: 2, mb: 3 }}>
+        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'end', width: '100%' }}>
+          <Box sx={{ minWidth: 140 }}>
+            <Typography fontWeight={500} sx={{ mb: 1 }}>Type:</Typography>
+            <select id="type" className="form-select" value={dates.type} onChange={e => setDates(d => ({ ...d, type: e.target.value }))} style={{ width: '100%', minWidth: '120px' }} >
+              <option value="paymentDate">Payment Date</option>
+            </select>
+          </Box>
+          <Box sx={{ minWidth: 140, flex: 1 }}>
+            <Typography fontWeight={500} sx={{ mb: 1 }}>From Date:</Typography>
+            <input type="date" className="form-control" id="start" value={dates.start || ''} onChange={e => setDates(d => ({ ...d, start: e.target.value }))} placeholder="From" style={{ width: '100%' }} />
+          </Box>
+          <Box sx={{ minWidth: 140, flex: 1 }}>
+            <Typography fontWeight={500} sx={{ mb: 1 }}>To Date:</Typography>
+            <input type="date" className="form-control" id="end" value={dates.end || ''} onChange={e => setDates(d => ({ ...d, end: e.target.value }))} placeholder="To" style={{ width: '100%' }} />
+          </Box>
+          <Box sx={{ minWidth: 180, flex: 2 }}>
+            <Typography fontWeight={500} sx={{ mb: 1 }}>Search</Typography>
+            <input type="text" className="form-control" placeholder="Enter search keyword" style={{ width: '100%' }} onChange={e => setGlobalSearch(e.target.value)} />
+          </Box>
+          <Box sx={{ minWidth: 120, alignSelf: 'flex-end' }}>
+            <Button variant="contained" color="primary" fullWidth onClick={search} sx={{ height: 50 }} startIcon={<InfoIcon />}>Search</Button>
+          </Box>
+        </Box>
+      </Paper>
+      <Paper elevation={1} style={{ margin: "10px 0 20px 0", padding: "16px", background: "#f5f5f5", display: "flex", gap: 24, flexWrap: "wrap", alignItems: "center", justifyContent: "space-between" }}>
+        <Typography color="black">Expenses: {filteredExpenses.length}</Typography>
+        <Typography color="black">Total: {totals[0]}</Typography>
+        <Box sx={{ display:'flex', gap:1 }}>
+          <Tooltip title="Export Excel">
+            <IconButton color="success" onClick={exportCSV}>
+              <DownloadIcon />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Add Expense">
+            <IconButton color="primary" onClick={addNew}>
+              <AddIcon />
+            </IconButton>
+          </Tooltip>
+        </Box>
+      </Paper>
+      <Box sx={{ width: '100%', minHeight: 200, position: 'relative' }}>
+        {loading && (
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 200, width: '100%' }}>
+            <CircularProgress color="primary" />
+            <Typography variant="body1" color="primary" sx={{ mt: 1 }}>Loading expenses...</Typography>
+          </Box>
+        )}
+        {!loading && pageExpenses.length === 0 && (
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 200, width: '100%' }}>
+            <InfoIcon sx={{ color: 'info.main', fontSize: 48, mb: 1 }} />
+            <Typography variant="h6" color="text.secondary">No expenses found</Typography>
+          </Box>
+        )}
+        {!loading && pageExpenses.map(exp => (
+          <Paper key={exp.id} elevation={2} sx={{ width: '100%', minHeight: 66, display: 'flex', alignItems: 'center', boxSizing: 'border-box', p: 1.5, mb: 1, borderRadius: 1, overflow: 'hidden' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+              <Stack direction="row" flexWrap="wrap" spacing={2} alignItems="center" sx={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+                <Tooltip title={exp.type}><Chip label={exp.type} color={exp.type === 'Ingress' ? 'success' : (exp.type === 'Egress' ? 'warning' : 'default')} variant="outlined" sx={{ minWidth: 80, maxWidth: 100 }} /></Tooltip>
+                <Tooltip title={exp.title}><Chip label={exp.title.length > 16 ? exp.title.slice(0, 16) + '…' : exp.title} color="primary" variant="outlined" sx={{ minWidth: 100, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis' }} /></Tooltip>
+                <Tooltip title={exp.paymentMethod}><Chip label={exp.paymentMethod} sx={{ minWidth: 90, maxWidth: 120 }} /></Tooltip>
+                <Typography sx={{ minWidth: 75 }}>{exp.amount}</Typography>
+                <Typography sx={{ minWidth: 110 }}>{exp.paymentDate}</Typography>
+                <Tooltip title={exp.desc}><Chip label={exp.desc && exp.desc.length > 12 ? exp.desc.slice(0, 12) + '…' : exp.desc} sx={{ minWidth: 80, maxWidth: 120 }} /></Tooltip>
+                <Tooltip title={exp.category}><Chip label={exp.category} sx={{ minWidth: 80, maxWidth: 120 }} /></Tooltip>
+                <Tooltip title={exp.subcategory}><Chip label={exp.subcategory} sx={{ minWidth: 80, maxWidth: 120 }} /></Tooltip>
+                <Tooltip title={exp.status}><Chip label={exp.status} color={exp.status === 'Completed' ? 'success' : 'warning'} sx={{ minWidth: 95, maxWidth: 120 }} /></Tooltip>
+              </Stack>
+              <Stack direction="row" spacing={1} alignItems="center">
+                <Tooltip title="Edit Expense">
+                  <IconButton onClick={() => editExpense(exp)}><EditIcon color="primary" /></IconButton>
+                </Tooltip>
+                <Tooltip title="Delete Expense">
+                  <IconButton onClick={() => confirmDeleteExpense(exp)} color="secondary"><DeleteIcon /></IconButton>
+                </Tooltip>
+              </Stack>
+            </Box>
+          </Paper>
+        ))}
+      </Box>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', my: 3, gap: 3 }}>
+        <Typography sx={{ mr: 1 }}>Rows per page:</Typography>
+        <select
+          value={rowsPerPage}
+          onChange={e => {
+            setRowsPerPage(Number(e.target.value));
+            setPage(0);
           }}
-          value={expenses}
-          paginator
-          rows={25}
-          dataKey="id"
-          filters={filters}
-          csvSeparator=";"
-          globalFilterFields={filtersA}
-          header={header}
-          footerColumnGroup={footerGroup}
-          emptyMessage="No expenses found."
+          style={{ height: 28, marginRight: 16 }}
         >
-          <Column
-            header="Actions"
-            body={actionBodyTemplate}
-            exportable={false}
-          ></Column>
-          <Column field="idP" header="Id" />
-          <Column body={typeBodyTemplate} header="Type" />
-          <Column field="title" sortable header="Title" />
-          <Column field="paymentMethod" sortable header="Payment Method" />
-          <Column field="amount" sortable header="Amount" />
-          <Column field="paymentDate" sortable header="Payment Date" />
-          <Column field="desc" sortable header="Desc" />
-          <Column field="category" sortable header="Category" />
-          <Column field="subcategory" sortable header="Sub Category" />
-          <Column body={statusBodyTemplate} header="Status" />
-          <Column field="status" sortable hidden header="Status" />
-          <Column field="type" sortable hidden header="Type" />
-        </DataTable>
-      </div>
-      <Dialog
-        visible={deleteExpenseDialog}
-        header="Confirm"
-        modal
-        footer={deleteTicketDialogFooter}
-        onHide={hideDeleteExpenseDialog}
-      >
-        <div className="confirmation-content">
-          <i className="fa fa-triangle mr-3" />
-          {expense && (
-            <span>
-              Are you sure you want to delete <b>{expense.title}</b>?
-            </span>
-          )}
-        </div>
+          {[25, 50, 100, 200, 500].map(n => (
+            <option key={n} value={n}>{n}</option>
+          ))}
+        </select>
+        <Typography variant="body2" color="text.secondary" sx={{ minWidth: 56, textAlign: 'center' }}>{pageExpenses.length} expenses</Typography>
+        <Button variant="outlined" size="small" disabled={page === 0} onClick={() => setPage(page - 1)}>Prev</Button>
+        <Typography variant="body2" sx={{ lineHeight: 2.5 }}>Page {page + 1} of {totalPages}</Typography>
+        <Button variant="outlined" size="small" disabled={page + 1 >= totalPages} onClick={() => setPage(page + 1)}>Next</Button>
+      </Box>
+      {/* Delete dialog */}
+      <Dialog open={deleteDialog} onClose={() => setDeleteDialog(false)}>
+        <DialogTitle>Confirm</DialogTitle>
+        <DialogContent>
+          {expense && <Typography>Are you sure you want to delete <b>{expense.title}</b>?</Typography>}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialog(false)}>No</Button>
+          <Button color="error" onClick={deleteExpense}>Yes</Button>
+        </DialogActions>
       </Dialog>
     </Layout>
   );

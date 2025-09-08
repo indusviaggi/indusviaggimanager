@@ -1,103 +1,125 @@
+import React, { useState } from "react";
+import { Box, Typography, TextField, Button, InputAdornment, IconButton, Alert, Link, Checkbox, FormControlLabel } from "@mui/material";
+import PersonIcon from '@mui/icons-material/Person';
+import LockIcon from '@mui/icons-material/Lock';
+import Visibility from '@mui/icons-material/Visibility';
+import VisibilityOff from '@mui/icons-material/VisibilityOff';
+import { userService } from "services";
 import { useRouter } from "next/router";
-import Link from "next/link";
-import { useForm } from "react-hook-form";
-import { yupResolver } from "@hookform/resolvers/yup";
-import * as Yup from "yup";
+import NextLink from 'next/link';
 
-import { Layout } from "components/account";
-import { userService, alertService } from "services";
-
-export default Login;
-
-function Login() {
+export default function LoginPage() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPass, setShowPass] = useState(false);
+  const [error, setError] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  // form validation rules
-  const validationSchema = Yup.object().shape({
-    email: Yup.string().required("Email is required"),
-    password: Yup.string().required("Password is required"),
-  });
-  const formOptions = { resolver: yupResolver(validationSchema) };
-
-  // get functions to build form with useForm() hook
-  const { register, handleSubmit, formState } = useForm(formOptions);
-  const { errors } = formState;
-
-  function onSubmit({ email, password }) {
-    alertService.clear();
-    return userService
-      .login(email, password)
-      .then(() => {
-        // get return url from query parameters or default to '/'
-        const returnUrl = router.query.returnUrl || "/";
-        router.push(returnUrl).then();
-      })
-      .catch(alertService.error);
-  }
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+    try {
+      await userService.login(email, password);
+      router.push("/");
+    } catch (err) {
+      setError("Invalid email or password.");
+      setLoading(false);
+    }
+  };
 
   return (
-    <Layout>
-      <div className="container">
-        <div className="row">
-          <div className="col-lg-10 col-md-11 login-box">
-            <div className="col-lg-12 login-key">
-              <i className="fa fa-key" aria-hidden="true"></i>
-            </div>
-            <div className="col-lg-12 login-title">Ticket Manager</div>
+    <Box // Root container with background and flex layout
+      sx={{
+        display: 'flex',
+        minHeight: '100vh',
+        width: '100%',
+        backgroundImage: 'url(/bg.jpg)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }}
+    >
+      {/* Left Side - Image area (spacer) */}
+      <Box sx={{ flex: 1, display: { xs: 'none', md: 'block' } }} />
 
-            <div className="col-lg-12 login-form">
-              <div className="col-lg-12 login-form">
-                <form onSubmit={handleSubmit(onSubmit)}>
-                  <div className="form-group">
-                    <label className="form-control-label">USERNAME</label>
-                    <input
-                      name="email"
-                      type="text"
-                      {...register("email")}
-                      className={`form-control f-login ${
-                        errors.email ? "is-invalid" : ""
-                      }`}
-                    />
-                    <div className="invalid-feedback">
-                      {errors.email?.message}
-                    </div>
-                  </div>
-                  <div className="form-group">
-                    <label className="form-control-label">PASSWORD</label>
-                    <input
-                      name="password"
-                      type="password"
-                      {...register("password")}
-                      className={`form-control f-login ${
-                        errors.password ? "is-invalid" : ""
-                      }`}
-                    />
-                    <div className="invalid-feedback">
-                      {errors.password?.message}
-                    </div>
-                  </div>
+      {/* Right Side - Full-height Login Form Panel */}
+      <Box
+        component="form"
+        onSubmit={handleSubmit}
+        autoComplete="off"
+        sx={{
+          width: { xs: '100%', md: 500 },
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          p: { xs: 3, sm: 6 },
+          color: 'white',
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          backdropFilter: 'blur(10px)',
+        }}
+      >
+        {/* Content wrapper to constrain width and center */}
+        <Box sx={{ width: '100%', maxWidth: 400, mx: 'auto' }}>
+          <Typography variant="h4" sx={{ mb: 1, fontWeight: 600 }}>
+            Ticket Manager
+          </Typography>
+          <Typography variant="body1" sx={{ mb: 4, color: 'rgba(255, 255, 255, 0.8)' }}>
+            Please enter your details to sign in.
+          </Typography>
 
-                  <div className="col-lg-12 loginbttm">
-                    <div className="col-lg-12 login-btm login-text"></div>
-                    <div className="col-lg-12 login-btm login-button">
-                      <button
-                        disabled={formState.isSubmitting}
-                        className="btn btn-warning text-center"
-                      >
-                        {formState.isSubmitting && (
-                          <span className="spinner-border spinner-border-sm me-1"></span>
-                        )}
-                        Login
-                      </button>
-                    </div>
-                  </div>
-                </form>
-              </div>
-            </div>
-            <div className="col-lg-3 col-md-2"></div>
-          </div>
-        </div>
-      </div>
-    </Layout>
+          {error && <Alert severity="error" sx={{ mb: 2, bgcolor: 'transparent', color: 'error.light' }}>{error}</Alert>}
+
+          <TextField
+            fullWidth
+            label="Email"
+            value={email}
+            autoComplete="username"
+            onChange={(e) => setEmail(e.target.value)}
+            sx={{ mb: 2, '& .MuiInputBase-root': { color: 'white' }, '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.5)' }, '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.8)' }, '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'white' }, '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'white' } }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <PersonIcon sx={{ color: 'white' }} />
+                </InputAdornment>
+              ),
+            }}
+          />
+          <TextField
+            fullWidth
+            label="Password"
+            value={password}
+            type={showPass ? "text" : "password"}
+            autoComplete="current-password"
+            onChange={(e) => setPassword(e.target.value)}
+            sx={{ mb: 2, '& .MuiInputBase-root': { color: 'white' }, '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.5)' }, '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.8)' }, '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'white' }, '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'white' } }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <LockIcon sx={{ color: 'white' }} />
+                </InputAdornment>
+              ),
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton onClick={() => setShowPass((show) => !show)} size="small" edge="end" sx={{ color: 'white' }}>
+                    {showPass ? <VisibilityOff /> : <Visibility />}
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
+          />
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <FormControlLabel
+              control={<Checkbox checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} sx={{ color: 'rgba(255, 255, 255, 0.8)', '&.Mui-checked': { color: 'primary.main' } }} />}
+              label={<Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.8)' }}>Remember me</Typography>}
+            />
+          </Box>
+          <Button type="submit" fullWidth variant="contained" size="large" disabled={loading} sx={{ py: 1.5, textTransform: 'none', fontSize: '1rem', mt: 2 }}>
+            {loading ? "Logging in..." : "Sign In"}
+          </Button>
+        </Box>
+      </Box>
+    </Box>
   );
 }

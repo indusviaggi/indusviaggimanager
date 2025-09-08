@@ -1,6 +1,6 @@
 import { ticketsService, userService } from "services";
 import { Doughnut, Chart, Pie, PolarArea } from "react-chartjs-2";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import React from "react";
 import {
   Chart as ChartJS,
@@ -19,6 +19,7 @@ import {
   RadialLinearScale,
 } from "chart.js";
 import { formatDate } from "../services";
+import dynamic from "next/dynamic";
 
 ChartJS.register(
   LinearScale,
@@ -40,7 +41,10 @@ ChartJS.register(
 export default Home;
 
 function Home() {
+  const ForecastChart = dynamic(() => import("../components/ForecastChart"), { ssr: false });
+
   const [profit, setProfit] = useState({});
+  const [bookings, setBookings] = useState([]);
   const [amounts, setAmounts] = useState({});
   const [methods, setMethods] = useState({});
   const [methodsP, setMethodsP] = useState({});
@@ -54,6 +58,8 @@ function Home() {
   const [total, setTotal] = useState(0);
   const [totalC, setTotalC] = useState(0);
   const [dates, setDates] = useState({});
+  const [searchedDates, setSearchedDates] = useState({});
+  const [loading, setLoading] = useState(true);
   const colors = [
     "rgba(255, 99, 132, 0.5)",
     "rgba(54, 162, 235, 0.5)",
@@ -61,11 +67,112 @@ function Home() {
     "rgba(75, 192, 192, 0.5)",
     "rgba(153, 102, 255, 0.5)",
     "rgba(255, 159, 64, 0.5)",
+    "rgba(214, 51, 132, 0.5)",
+    "rgba(63, 81, 181, 0.5)",
+    "rgba(121, 85, 72, 0.5)",
+    "rgba(158, 158, 158, 0.5)",
   ];
+
+  const leadTimeData = useMemo(() => {
+    if (bookings.length === 0 || !searchedDates.start || !searchedDates.end) {
+      return {};
+    }
+    const leadTimeBuckets = {
+      "0-7 Days": 0,
+      "8-30 Days": 0,
+      "31-90 Days": 0,
+      "91+ Days": 0,
+    };
+
+    const startDate = new Date(searchedDates.start);
+    const endDate = new Date(searchedDates.end);
+
+    const filteredBookings = bookings.filter((booking) => {
+      if (!booking.bookedOn) return false;
+      const bookingDate = new Date(booking.bookedOn);
+      return bookingDate >= startDate && bookingDate <= endDate;
+    });
+
+    const parseTravelDate = (dateString) => {
+      if (!dateString) return null;
+      const firstDateStr = dateString.split(" - ")[0];
+      const parts = firstDateStr.split("/");
+      if (parts.length !== 3) return null;
+      const [day, month, year] = parts;
+      const travelDate = new Date(year, month - 1, day);
+      return isNaN(travelDate.getTime()) ? null : travelDate;
+    };
+
+    filteredBookings.forEach((booking) => {
+      if (booking.dates && booking.bookedOn) {
+        const travelDate = parseTravelDate(booking.dates);
+        const bookedOnDate = new Date(booking.bookedOn);
+        if (travelDate && !isNaN(bookedOnDate.getTime())) {
+          const leadTime = (travelDate.getTime() - bookedOnDate.getTime()) / (1000 * 60 * 60 * 24);
+          if (leadTime < 0) return;
+          if (leadTime <= 7) leadTimeBuckets["0-7 Days"]++;
+          else if (leadTime <= 30) leadTimeBuckets["8-30 Days"]++;
+          else if (leadTime <= 90) leadTimeBuckets["31-90 Days"]++;
+          else leadTimeBuckets["91+ Days"]++;
+        }
+      }
+    });
+    return leadTimeBuckets;
+  }, [bookings, searchedDates]);
+
+  const avgTicketData = useMemo(() => {
+    if (Object.keys(amounts).length === 0 || Object.keys(profit).length === 0) {
+      return {};
+    }
+    const labels = Object.keys(amounts);
+    const avgValueData = [];
+    const avgProfitData = [];
+
+    for (const period of labels) {
+      const periodAmount = amounts[period];
+      const periodProfit = profit[period];
+
+      if (periodAmount && periodProfit && periodAmount.bookings > 0) {
+        const avgValue = periodAmount.totalReceivingAmount / periodAmount.bookings;
+        const avgProfit = periodProfit.profit / periodAmount.bookings;
+        avgValueData.push(avgValue);
+        avgProfitData.push(avgProfit);
+      } else {
+        avgValueData.push(0);
+        avgProfitData.push(0);
+      }
+    }
+    return {
+      labels: labels,
+      avgValue: avgValueData,
+      avgProfit: avgProfitData,
+    };
+  }, [amounts, profit]);
+
+  const profitMarginData = useMemo(() => {
+    if (Object.keys(amounts).length === 0 || Object.keys(profit).length === 0) {
+      return {};
+    }
+    const labels = Object.keys(amounts);
+    const marginData = [];
+
+    for (const period of labels) {
+      const periodAmount = amounts[period];
+      const periodProfit = profit[period];
+
+      if (periodAmount && periodProfit && periodAmount.totalReceivingAmount > 0) {
+        const margin = (periodProfit.profit / periodAmount.totalReceivingAmount) * 100;
+        marginData.push(margin);
+      } else {
+        marginData.push(0);
+      }
+    }
+    return { labels, margins: marginData };
+  }, [amounts, profit]);
 
   const pieChart4 =
     Object.keys(agentsA).length > 0 ? (
-      <Pie
+      <Doughnut
         data={{
           labels: Object.keys(agentsA),
           datasets: [
@@ -84,7 +191,7 @@ function Home() {
 
   const pieChart5 =
     Object.keys(methodsA).length > 0 ? (
-      <Pie
+      <Doughnut
         data={{
           labels: Object.keys(methodsA),
           datasets: [
@@ -122,7 +229,7 @@ function Home() {
 
   const pieChart =
     Object.keys(agents).length > 0 ? (
-      <Pie
+      <Doughnut
         data={{
           labels: Object.keys(agents),
           datasets: [
@@ -160,7 +267,7 @@ function Home() {
 
   const pieChart2 =
     Object.keys(methods).length > 0 ? (
-      <Pie
+      <Doughnut
         data={{
           labels: Object.keys(methods),
           datasets: [
@@ -208,14 +315,51 @@ function Home() {
               label: "Received",
               data: Object.values(amounts).map((a) => a.totalReceivingAmount),
               backgroundColor: colors[0],
+              yAxisID: "y",
             },
             {
               type: "bar",
               label: "Paid",
-              data: Object.values(amounts).map((a) => a.paidAmount),
+              data: Object.values(amounts).map(
+                (a) => a.paidAmount
+              ),
               backgroundColor: colors[1],
+              yAxisID: "y",
+            },
+            {
+              type: "line",
+              label: "Bookings",
+              data: Object.values(amounts).map((a) => a.bookings),
+              borderColor: colors[3],
+              backgroundColor: colors[3],
+              yAxisID: "y1",
             },
           ],
+        }}
+        options={{
+          scales: {
+            y: {
+              type: "linear",
+              display: true,
+              position: "left",
+              title: {
+                display: true,
+                text: "Amount (€)",
+              },
+            },
+            y1: {
+              type: "linear",
+              display: true,
+              position: "right",
+              title: {
+                display: true,
+                text: "Number of Bookings",
+              },
+              grid: {
+                drawOnChartArea: false,
+              },
+            },
+          },
         }}
       />
     ) : (
@@ -233,9 +377,177 @@ function Home() {
               type: "line",
               data: Object.values(profit).map((a) => a.profit),
               label: "Profit",
-              borderColor: "rgb(75, 192, 192)",
+              borderColor: colors[1],
+              backgroundColor: colors[1],
+              yAxisID: "y",
+            },
+            {
+              type: "line",
+              label: "Bookings",
+              data: Object.values(amounts).map((a) => a.bookings),
+              borderColor: colors[3],
+              backgroundColor: colors[3],
+              yAxisID: "y1",
             },
           ],
+        }}
+        options={{
+          scales: {
+            y: {
+              type: "linear",
+              display: true,
+              position: "left",
+              title: {
+                display: true,
+                text: "Profit (€)",
+              },
+            },
+            y1: {
+              type: "linear",
+              display: true,
+              position: "right",
+              title: {
+                display: true,
+                text: "Number of Bookings",
+              },
+              grid: {
+                drawOnChartArea: false,
+              },
+            },
+          },
+        }}
+      />
+    ) : (
+      <div className="text-center">No Data to show</div>
+    );
+
+  const leadTimeChart =
+    Object.values(leadTimeData).some((v) => v > 0) ? (
+      <Doughnut
+        data={{
+          labels: Object.keys(leadTimeData),
+          datasets: [
+            {
+              label: "Number of Bookings",
+              data: Object.values(leadTimeData),
+              backgroundColor: colors.slice(),
+              borderColor: colors.slice(),
+            },
+          ],
+        }}
+        options={{
+          plugins: {
+            legend: {
+              display: true,
+              position: "top",
+            },
+          },
+        }}
+      />
+    ) : (
+      <div className="text-center">No Data to show</div>
+    );
+
+  const avgTicketValueChart =
+    avgTicketData.labels &&
+    avgTicketData.labels.length > 0 &&
+    profitMarginData.margins
+      ? (
+      <Chart
+        type="line"
+        data={{
+          labels: avgTicketData.labels,
+          datasets: [
+            {
+              label: "Avg. Ticket Value (€)",
+              data: avgTicketData.avgValue,
+              borderColor: colors[1],
+              backgroundColor: colors[1],
+              yAxisID: "y",
+            },
+            {
+              label: "Avg. Profit per Ticket (€)",
+              data: avgTicketData.avgProfit,
+              borderColor: colors[0],
+              backgroundColor: colors[0],
+              yAxisID: "y1",
+            },
+            {
+              type: "line",
+              label: "Profit Margin (%)",
+              data: profitMarginData.margins,
+              borderColor: colors[3],
+              backgroundColor: colors[3],
+              yAxisID: "y2",
+            },
+          ],
+        }}
+        options={{
+          scales: {
+            y: {
+              type: "linear",
+              display: true,
+              position: "left",
+              title: {
+                display: true,
+                text: "Avg. Ticket Value (€)",
+              },
+            },
+            y1: {
+              type: "linear",
+              display: true,
+              position: "right",
+              title: {
+                display: true,
+                text: "Avg. Profit per Ticket (€)",
+              },
+              grid: {
+                drawOnChartArea: false,
+              },
+            },
+            y2: {
+              type: "linear",
+              display: true,
+              position: "right",
+              title: {
+                display: true,
+                text: "Profit Margin (%)",
+              },
+              grid: {
+                drawOnChartArea: false, // Important to avoid clutter
+              },
+              ticks: {
+                callback: function (value) {
+                  return value.toFixed(2) + "%";
+                },
+              },
+            },
+          },
+          plugins: {
+            tooltip: {
+              callbacks: {
+                label: function (context) {
+                  let label = context.dataset.label || "";
+                  if (label) {
+                    label += ": ";
+                  }
+                  if (context.parsed.y !== null) {
+                    // Add '%' for profit margin dataset
+                    if (context.dataset.yAxisID === "y2") {
+                      label += context.parsed.y.toFixed(2) + "%";
+                    } else {
+                      // Format other values as currency
+                      label += new Intl.NumberFormat("en-US", {
+                        style: "currency",
+                        currency: "EUR",
+                      }).format(context.parsed.y);
+                    }
+                  }
+                  return label;
+                },
+              },
+            },
+          },
         }}
       />
     ) : (
@@ -243,63 +555,58 @@ function Home() {
     );
 
   useEffect(() => {
-    getProfit();
+    const start = new Date();
+    start.setDate(1);
+    const defaultDates = {
+      start: formatDate(start),
+      end: formatDate(new Date()),
+      type: "bookedOn",
+    };
+    setDates(defaultDates);
+    setSearchedDates(defaultDates);
+    getProfit(defaultDates);
   }, []);
 
-  const getProfit = (dates = null) => {
-    let start = new Date();
-    //start.setMonth(start.getMonth() - 6);
-    start.setDate(1);
-    start = formatDate(start);
-    let end = formatDate(new Date());
-    let type = "bookedOn";
-    if (dates) {
-      start = dates.start;
-      end = dates.end;
-      type = dates.type;
-    }
-    setDates({ start, end, type });
-    setProfit({});
-    setAmounts({});
-    setMethods({});
-    setMethodsP({});
-    setMethodsA({});
-    setAgents({});
-    setAgentsP({});
-    setAgentsA({});
-    ticketsService.getProfit({ start, end, type }).then((x) => {
-      console.log(x);
-      setProfit(x.ticketsP);
-      setAmounts(x.ticketsP);
-      setMethods(x.methods);
-      setMethodsP(x.methodsP);
-      setAgents(x.agents);
-      setAgentsP(x.agentsP);
-      setAgentsA(x.agentsA);
-      setMethodsA(x.methodsA);
-      setAirlines(x.airlines);
-      setAirlinesList(x.airlinesList);
-      setAirlinesC(x.airlinesC);
-      setTotal(x.total);
-      setTotalC(x.totalC);
-    });
+  const getProfit = (datesToFetch) => {
+    setLoading(true);
+    Promise.all([
+      ticketsService.getProfit(datesToFetch),
+      ticketsService.getBookings(),
+    ])
+      .then(([profitData, bookingsData]) => {
+        setProfit(profitData.ticketsP);
+        setAmounts(profitData.ticketsP);
+        setMethods(profitData.methods);
+        setMethodsP(profitData.methodsP);
+        setAgents(profitData.agents);
+        setAgentsP(profitData.agentsP);
+        setAgentsA(profitData.agentsA);
+        setMethodsA(profitData.methodsA);
+        setAirlines(profitData.airlines);
+        setAirlinesList(profitData.airlinesList);
+        setAirlinesC(profitData.airlinesC);
+        setTotal(profitData.total);
+        setTotalC(profitData.totalC);
+        setBookings(bookingsData);
+      })
+      .catch((error) => console.error("Failed to fetch dashboard data:", error))
+      .finally(() => setLoading(false));
   };
 
-  const search = () => {
-    let start = document.getElementById("start").value;
-    let end = document.getElementById("end").value;
-    let type = document.getElementById("type").value;
-    getProfit({ start, end, type });
+  const handleSearch = (e) => {
+    e.preventDefault();
+    setSearchedDates(dates);
+    getProfit(dates);
   };
 
   return (
     <>
       <div className="container">
-        <div className="row">
+        <form className="row" onSubmit={handleSearch}>
           <div className="col-sm-2">
             <label htmlFor="type">Type:</label>
             <div className="input-group">
-              <select id="type" className="form-select">
+              <select id="type" className="form-select" value={dates.type} onChange={(e) => setDates((d) => ({ ...d, type: e.target.value }))}>
                 <option defaultValue value="bookedOn">
                   Issue Date
                 </option>
@@ -317,7 +624,8 @@ function Home() {
                 type="date"
                 className="form-control"
                 id="start"
-                defaultValue={dates.start}
+                value={dates.start || ''}
+                onChange={(e) => setDates((d) => ({ ...d, start: e.target.value }))}
                 placeholder="From"
               />
             </div>
@@ -329,7 +637,8 @@ function Home() {
                 type="date"
                 className="form-control"
                 id="end"
-                defaultValue={dates.end}
+                value={dates.end || ''}
+                onChange={(e) => setDates((d) => ({ ...d, end: e.target.value }))}
                 placeholder="To"
               />
             </div>
@@ -337,127 +646,164 @@ function Home() {
           <div className="col-sm-2">
             <button
               type="submit"
+              disabled={loading}
               className="btn btn-block btn-primary width-search"
-              onClick={() => {
-                search();
-              }}
             >
-              Search
+              {loading ? "Searching..." : "Search"}
             </button>
           </div>
-        </div>
+        </form>
       </div>
-      <div className="p-4">
-        <div className="container">
-          <br />
-          <br />
-          <br />
-          <div className="row">
-            <div className="col-md-6">
-              <h4 className="drag-text">Paid vs Received Amount</h4>
-              {barChart}
-            </div>
-            <div className="col-md-6">
-              <h4 className="drag-text">Profit</h4>
-              {barChart2}
-            </div>
+      {loading ? (
+        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
+          <div className="spinner-border text-primary" role="status" style={{ width: '4rem', height: '4rem' }}>
+            <span className="visually-hidden">Loading...</span>
           </div>
-          <div className="row">
-            <div className="col-6 col-xs-12 col-xl-3">
-              <br />
-              <h4 className="drag-text">Agents</h4>
-              {pieChart}
+          <h4 style={{ marginTop: '20px', color: '#0d6efd' }}>Loading Dashboard...</h4>
+        </div>
+      ) : (
+        <div className="p-4">
+          <div className="container">
+            <br />
+            <br />
+            <br />
+            <div className="row">
+              <div className="col-md-6">
+                <h4 className="drag-text">Paid vs Received Amount</h4>
+                {barChart}
+              </div>
+              <div className="col-md-6">
+                <h4 className="drag-text">Profit</h4>
+                {barChart2}
+              </div>
             </div>
-            <div className="col-6 col-xs-12 col-xl-3">
-              <br />
-              <h4 className="drag-text">Payment Methods</h4>
-              {pieChart2}
-            </div>
-            <div className="col-6 col-xs-12 col-xl-3">
-              <br />
-              <h4 className="drag-text">Profit by Agents</h4>
-              {pieChart1}
-            </div>
-            <div className="col-6 col-xs-12 col-xl-3">
-              <br />
-              <h4 className="drag-text">Profit by Methods</h4>
-              {pieChart3}
-            </div>
-            <div className="col-6 col-xs-12 col-xl-3">
-              <br />
-              <h4 className="drag-text">Payments by Agents</h4>
-              {pieChart4}
-            </div>
-            <div className="col-6 col-xs-12 col-xl-3">
-              <br />
-              <h4 className="drag-text">Pay. by Methods</h4>
-              {pieChart5}
-            </div>
-            <div className="col-12 col-xs-12 col-xl-12">
-              <br />
-              <h4 className="drag-text">Bookings</h4>
-              {pieChart6}
-              <div className="table-responsive">
-                <table className="table table-striped">
-                  <thead>
-                    <tr>
-                      <th style={{ width: "40%" }}>Name</th>
-                      <th style={{ width: "20%" }}>Bookings</th>
-                      <th style={{ width: "20%" }}>Cost</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td>
-                        <b>Total</b>
-                      </td>
-                      <td>
-                        <b>{total}</b>
-                      </td>
-                      <td>
-                        <b>{totalC.toFixed(2)}</b>
-                      </td>
-                    </tr>
-                    {Object.keys(airlinesList) &&
-                      Object.keys(airlinesList).map((airline, i) => (
-                        <tr key={i}>
-                          <td>{airline}</td>
-                          <td>
-                            {airlinesList[airline]} (
-                            {(
-                              (parseInt(airlinesList[airline]) * 100) /
-                              parseInt(total)
-                            ).toFixed(2)}
-                            %)
-                          </td>
-                          <td>
-                            {airlinesC[airline].toFixed(2)} (
-                            {(
-                              (parseFloat(airlinesC[airline]) * 100) /
-                              parseFloat(totalC)
-                            ).toFixed(2)}
-                            %)
-                          </td>
-                        </tr>
-                      ))}
-                    <tr>
-                      <td>
-                        <b>Total</b>
-                      </td>
-                      <td>
-                        <b>{total}</b>
-                      </td>
-                      <td>
-                        <b>{totalC.toFixed(2)}</b>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
+            <div className="row">
+              <div className="col-6 col-xs-12 col-xl-3">
+                <br />
+                <h4 className="drag-text">Agents</h4>
+                {pieChart}
+              </div>
+              <div className="col-6 col-xs-12 col-xl-3">
+                <br />
+                <h4 className="drag-text">Payment Methods</h4>
+                {pieChart2}
+              </div>
+              <div className="col-6 col-xs-12 col-xl-3">
+                <br />
+                <h4 className="drag-text">Profit by Agents</h4>
+                {pieChart1}
+              </div>
+              <div className="col-6 col-xs-12 col-xl-3">
+                <br />
+                <h4 className="drag-text">Profit by Methods</h4>
+                {pieChart3}
+              </div>
+              <div className="col-6 col-xs-12 col-xl-3">
+                <br />
+                <h4 className="drag-text">Payments by Agents</h4>
+                {pieChart4}
+              </div>
+              <div className="col-6 col-xs-12 col-xl-3">
+                <br />
+                <h4 className="drag-text">Pay. by Methods</h4>
+                {pieChart5}
+              </div>
+              <div className="col-6 col-xs-12 col-xl-3">
+                <br />
+                <h4 className="drag-text">Booking Lead Time</h4>
+                {leadTimeChart}
+              </div>
+              <div className="col-md-6">
+                <br />
+                <h4 className="drag-text">
+                  Average Ticket Value, Profit & Margin
+                </h4>
+                {avgTicketValueChart}
+              </div>
+              <div className="col-md-12 col-sm-12 col-xs-12 col-lg-12 col-xl-6">
+                <br />
+                <h4 className="drag-text">Bookings forecast</h4>
+                {bookings && bookings.length > 0 ? (
+                  <ForecastChart
+                    bookings={bookings}
+                    colors={colors}
+                    monthsBack={24}
+                    forecastMonths={6}
+                    alpha={0.3}
+                    beta={0.05}
+                    gamma={0.2}
+                    model="additive"
+                  />
+                ) : (
+                  <div className="text-center">No Forecast data found</div>
+                )}
+              </div>
+              <div className="col-12 col-xs-12 col-xl-12">
+                <br />
+                <h4 className="drag-text">Bookings</h4>
+                {pieChart6}
+                <div className="table-responsive">
+                  <table className="table table-striped">
+                    <thead>
+                      <tr>
+                        <th style={{ width: "40%" }}>Name</th>
+                        <th style={{ width: "20%" }}>Bookings</th>
+                        <th style={{ width: "20%" }}>Cost</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>
+                          <b>Total</b>
+                        </td>
+                        <td>
+                          <b>{total}</b>
+                        </td>
+                        <td>
+                          <b>{totalC.toFixed(2)}</b>
+                        </td>
+                      </tr>
+                      {Object.keys(airlinesList) &&
+                        Object.keys(airlinesList).map((airline, i) => (
+                          <tr key={i}>
+                            <td>{airline}</td>
+                            <td>
+                              {airlinesList[airline]} (
+                              {(
+                                (parseInt(airlinesList[airline]) * 100) /
+                                parseInt(total)
+                              ).toFixed(2)}
+                              %)
+                            </td>
+                            <td>
+                              {airlinesC[airline].toFixed(2)} (
+                              {(
+                                (parseFloat(airlinesC[airline]) * 100) /
+                                parseFloat(totalC)
+                              ).toFixed(2)}
+                              %)
+                            </td>
+                          </tr>
+                        ))}
+                      <tr>
+                        <td>
+                          <b>Total</b>
+                        </td>
+                        <td>
+                          <b>{total}</b>
+                        </td>
+                        <td>
+                          <b>{totalC.toFixed(2)}</b>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
     </>
   );
 }

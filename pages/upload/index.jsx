@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
-
+import { Button } from "@mui/material";
 import { Spinner } from "components";
 import { Layout } from "components/users";
 import { alertService, ticketsService } from "services";
@@ -135,14 +135,16 @@ function Index() {
         </div>
       </form>
       <div id="filenames"></div>
-      <button
-        type="button"
-        disabled={!files || files.length <= 0}
-        onClick={onSubmit}
-        className="w-100 btn btn-lg btn-warning"
-      >
-        Upload
-      </button>
+      <Button
+            variant="contained"
+            disabled={!files || files.length <= 0}
+            color="primary"
+            fullWidth
+            onClick={onSubmit}
+            sx={{ height: 50 }}
+          >
+            Upload
+        </Button>
     </Layout>
   );
 }

@@ -31,6 +31,7 @@ export const ticketsService = {
   getTicketsForSupply,
   getTicketsByAgent,
   getFlights,
+  getBookings,
 };
 
 async function getTicketsForSupply(filters = {}) {
@@ -154,6 +155,11 @@ async function getRefundsForSupply(filters = {}) {
   return result;
 }
 
+async function getBookings() {
+  const tickets = await fetchWrapper.get(baseUrl + '/profit');
+  return tickets;
+}
+
 async function getProfit(filters) {
   const users = await fetchWrapper.get(usersUrl);
   const result = await fetchWrapper.post(baseUrl + "/profit", filters);
@@ -207,13 +213,15 @@ async function getProfit(filters) {
 
     let paidAmount = parseFloat(ticket.paidAmount);
     let profit = totalReceivingAmount - paidAmount;
+    let bookings = 1;
 
     if (ticketsP[key] !== undefined) {
       ticketsP[key].totalReceivingAmount += totalReceivingAmount;
       ticketsP[key].paidAmount += paidAmount;
       ticketsP[key].profit += profit;
+      ticketsP[key].bookings += 1;
     } else {
-      ticketsP[key] = { totalReceivingAmount, paidAmount, profit };
+      ticketsP[key] = { totalReceivingAmount, paidAmount, profit, bookings };
     }
 
     if (
