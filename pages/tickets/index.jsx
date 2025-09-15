@@ -3,9 +3,10 @@ import React, { useState, useEffect, useRef } from "react";
 import Router from "next/router";
 import { formatDate, ticketsService } from "../../services";
 import { jsPDF } from "jspdf";
+import "jspdf-autotable";
 import {
   Grid, Paper, Typography, Box, Stack, IconButton, Tooltip, Chip, Button, Dialog, DialogTitle, DialogContent, DialogActions, Table, TableBody, TableRow, TableCell,
-  FormControl, InputLabel, Select, MenuItem, OutlinedInput, Checkbox, ListItemText
+  FormControl, InputLabel, Select, MenuItem, OutlinedInput, Checkbox, ListItemText, FormControlLabel, Collapse
 } from "@mui/material";
 import AddIcon from '@mui/icons-material/Add';
 import InfoIcon from "@mui/icons-material/Info";
@@ -15,6 +16,8 @@ import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import DownloadIcon from '@mui/icons-material/Download';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 export default Index;
 
 function Index() {
@@ -32,6 +35,9 @@ function Index() {
   const [globalSearch, setGlobalSearch] = useState("");
   const [sortConfig, setSortConfig] = useState({ key: 'bookedOn', direction: 'descending' });
   const [notPaidOnly, setNotPaidOnly] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [availableFields, setAvailableFields] = useState([]);
+  const [selectedFields, setSelectedFields] = useState([]);
 
   useEffect(() => {
     getTickets();
@@ -82,6 +88,41 @@ function Index() {
     setPage(0);
     calculate(filtered);
   }, [notPaidOnly, globalSearch, searchFields, apiTickets, sortConfig]);
+
+  const PRIORITY_FIELDS = [
+    'name', 'bookingCode', 'ticketNumber', 'bookedOn', 'iata',
+    'profit', 'paidAmount', 'receivingAmountT', 'methods', 'paymentMethod',
+    'phone', 'agent', 'agentCost',
+    'receivingAmount1', 'receivingAmount1Date',
+    'receivingAmount2', 'receivingAmount2Date',
+    'receivingAmount3', 'receivingAmount3Date',
+    'travel1', 'travel2', 'flight', 'dates',
+    'refund', 'refundDate', 'penality', 'returned', 'returnedDate', 'refundUsed',
+    'cardNumber', 'desc', 'id'
+  ];
+
+  // Collect all field names across all tickets and order by importance
+  useEffect(() => {
+    if (!apiTickets || !apiTickets.length) {
+      setAvailableFields([]);
+      setSelectedFields([]);
+      return;
+    }
+    const keys = Array.from(new Set(apiTickets.flatMap(t => Object.keys(t || {}))));
+    const idx = (k) => {
+      const i = PRIORITY_FIELDS.indexOf(k);
+      return i === -1 ? 999 : i;
+    };
+    keys.sort((a, b) => {
+      const ia = idx(a);
+      const ib = idx(b);
+      if (ia !== ib) return ia - ib;
+      return a.localeCompare(b);
+    });
+    setAvailableFields(keys);
+    // keep only still-available keys selected
+    setSelectedFields(prev => prev.filter(f => keys.includes(f)));
+  }, [apiTickets]);
 
   const getTickets = (dates = null) => {
     setLoading(true);
@@ -319,10 +360,10 @@ function Index() {
     ]);
   };
 
-  // Restore exportCSV logic
+  // Export CSV using selected fields (if any) or all fields by default
   const exportCSV = () => {
     if (!tickets.length) return;
-    const fields = Object.keys(tickets[0]);
+    const fields = selectedFields.length ? selectedFields : Array.from(new Set(tickets.flatMap(t => Object.keys(t || {}))));
     const csvRows = [
       fields.join(","),
       ...tickets.map(row =>
@@ -337,6 +378,86 @@ function Index() {
     a.download = 'tickets_export.csv';
     a.click();
     window.URL.revokeObjectURL(url);
+  };
+
+  // Export PDF with buyer page styling (Name, Booking Date, Ticket N., Cost, Paid, Remained)
+  const exportTicketsPDF = () => {
+    if (!tickets || !tickets.length) return;
+
+    // Compute totals
+    let totalCost = 0;
+    let totalPaid = 0;
+    tickets.forEach(t => {
+      const costN = parseFloat(String(t.paidAmount || '0').replace(/[^\d.-]/g, '')) || 0;
+      const paidN = parseFloat(String(t.receivingAmountT || '0').replace(/[^\d.-]/g, '')) || 0;
+      totalCost += costN;
+      totalPaid += paidN;
+    });
+    const totalRemained = totalCost - totalPaid;
+
+    // Prepare doc header
+    const imgData = "logo.png";
+    const doc = new jsPDF();
+    let row = 10;
+    doc.addImage(imgData, "PNG", 10, 10, 40, 40);
+    doc.setFontSize(20);
+    row += 10;
+    doc.text("Indus Viaggi", 200, row, null, null, "right");
+    doc.setFontSize(10);
+    row += 10;
+    doc.text("Via Don Giovanni Alai, 6/A", 200, row, null, null, "right");
+    row += 5;
+    doc.text("42121 - Reggio Emilia", 200, row, null, null, "right");
+    row += 5;
+    doc.text("Tel/fax: +39 0522434627", 200, row, null, null, "right");
+    row += 5;
+    doc.text("Cell.: +39 3889220982, +39 3802126100", 200, row, null, null, "right");
+    row += 10;
+    doc.text(
+      "Total Cost: € " + totalCost.toFixed(2) +
+      " - Total Paid: € " + totalPaid.toFixed(2) +
+      " - Remained: € " + totalRemained.toFixed(2),
+      10,
+      row,
+      null,
+      null,
+      "left"
+    );
+    row += 2;
+    doc.setDrawColor(120, 120, 120);
+    doc.line(10, row, 200, row);
+    doc.setFontSize(10);
+    row += 2;
+
+    // Table
+    const headers = [["Name", "Booking Date", "PNR", "Ticket N.", "Cost", "Paid", "Remained"]];
+    const body = tickets.map(t => {
+      const costStr = t.receivingAmountT || '';
+      const paidStr = t.agentCost || '';
+      const costN = parseFloat(String(costStr).replace(/[^\d.-]/g, '')) || 0;
+      const paidN = parseFloat(String(paidStr).replace(/[^\d.-]/g, '')) || 0;
+      const remained = costN - paidN;
+      return [
+        t.name || '',
+        t.bookedOn || '',
+        t.bookingCode || '',
+        t.ticketNumber || '',
+        costStr,
+        paidStr,
+        "€ " + remained.toFixed(2),
+      ];
+    });
+    doc.autoTable({ startY: row, head: headers, body });
+
+    // Footer
+    row = 280;
+    doc.setFontSize(8);
+    doc.text("Indus Viaggi", 200, row, null, null, "right");
+    row += 2;
+    doc.line(10, row, 200, row);
+    row += 3;
+    doc.text("Via Don Giovanni Alai, 6/A, 42121 Reggio Emilia RE", 200, row, null, null, "right");
+    doc.save("tickets_" + Date.now() + ".pdf");
   };
 
   // PAGINATION
@@ -454,6 +575,56 @@ function Index() {
         </Box>
       </Paper>
 
+      {/* Export fields selection (collapsible) */}
+      <Paper elevation={1} sx={{ p: 2, mb: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>Export Fields</Typography>
+          <IconButton onClick={() => setExportOpen(o => !o)} aria-label="toggle export fields">
+            {exportOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+          </IconButton>
+        </Box>
+        <Collapse in={exportOpen} timeout="auto" unmountOnExit>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap', mb: 1, mt: 1 }}>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={availableFields.length > 0 && selectedFields.length === availableFields.length}
+                  indeterminate={selectedFields.length > 0 && selectedFields.length < availableFields.length}
+                  onChange={() => {
+                    if (selectedFields.length === availableFields.length) {
+                      setSelectedFields([]);
+                    } else {
+                      setSelectedFields(availableFields);
+                    }
+                  }}
+                />
+              }
+              label="Select all"
+            />
+            <Typography variant="body2">Selected: {selectedFields.length}/{availableFields.length}</Typography>
+          </Box>
+          <Grid container spacing={1}>
+            {availableFields.map(field => (
+              <Grid key={field} item xs={12} sm={6} md={4} lg={3}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={selectedFields.includes(field)}
+                      onChange={() =>
+                        setSelectedFields(prev =>
+                          prev.includes(field) ? prev.filter(f => f !== field) : [...prev, field]
+                        )
+                      }
+                    />
+                  }
+                  label={field}
+                />
+              </Grid>
+            ))}
+          </Grid>
+        </Collapse>
+      </Paper>
+
       {/* Totals Summary */}
       <Paper elevation={1} style={{ margin: "10px 0 20px 0", padding: "16px", backgroundColor: "#f5f5f5", display: "flex", gap: 24, flexWrap: "wrap", alignItems: "center", justifyContent: "space-between" }}>
         <Box sx={{ display: 'flex', gap: 3, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -484,8 +655,13 @@ function Index() {
             </IconButton>
           </Tooltip>
           <Tooltip title="Export Excel">
-            <IconButton color="success" onClick={() => exportCSV && exportCSV(false)}>
+            <IconButton color="success" onClick={exportCSV}>
               <DownloadIcon />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Export PDF">
+            <IconButton color="error" onClick={exportTicketsPDF}>
+              <PictureAsPdfIcon />
             </IconButton>
           </Tooltip>
           <Tooltip title="Add Ticket">
