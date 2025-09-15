@@ -530,10 +530,10 @@ function Index() {
           >
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', height: '100%', overflow: 'hidden' }}>
               <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
-                <Tooltip title={ticket.name}><Chip label={ticket.name.length > 25 ? ticket.name.slice(0, 25) + '…' : ticket.name} color="primary" variant="outlined" sx={{ width: 200, overflow: 'hidden', textOverflow: 'ellipsis' }} /></Tooltip>
-                <Tooltip title={ticket.bookingCode}><Chip label={ticket.bookingCode.length > 25 ? ticket.bookingCode.slice(0, 25) + '…' : ticket.bookingCode} color="secondary" variant="outlined" sx={{ width: 100, overflow: 'hidden', textOverflow: 'ellipsis' }} /></Tooltip>
+                <Tooltip title={ticket.name}><Chip label={ticket.name.length > 25 ? ticket.name.slice(0, 25) + '…' : ticket.name} color="primary" variant="outlined" sx={{ width: 150, overflow: 'hidden', textOverflow: 'ellipsis' }} /></Tooltip>
+                <Tooltip title={ticket.bookingCode}><Chip label={ticket.bookingCode.length > 25 ? ticket.bookingCode.slice(0, 25) + '…' : ticket.bookingCode} color="secondary" variant="outlined" sx={{ width: 80, overflow: 'hidden', textOverflow: 'ellipsis' }} /></Tooltip>
                 <Typography sx={{ fontWeight: 500 }}>{ticket.ticketNumber}</Typography>
-                <Tooltip title={ticket.iata}><Chip label={ticket.iata.length > 25 ? ticket.iata.slice(0, 25) + '…' : ticket.iata} color="tertiary" variant="outlined" sx={{ width: 100, overflow: 'hidden', textOverflow: 'ellipsis' }} /></Tooltip>
+                <Tooltip title={ticket.iata}><Chip label={ticket.iata.length > 25 ? ticket.iata.slice(0, 25) + '…' : ticket.iata} color="tertiary" variant="outlined" sx={{ width: 80, overflow: 'hidden', textOverflow: 'ellipsis' }} /></Tooltip>
                 <Typography
                   color={Number(ticket.profit.replace(/[^\d.-]/g, '')) < 0 ? 'error.main' : 'success.main'}>
                   {ticket.profit}
@@ -543,7 +543,7 @@ function Index() {
                 <Typography>{ticket.bookedOn}</Typography>
                 <Typography variant='body2'>{ticket.methods}</Typography>
                 {ticket.agent && ticket.agent.trim() !== "" && (
-                  <Tooltip title={ticket.agent}><Chip label={ticket.agent.length > 25 ? ticket.agent.slice(0, 25) + '…' : ticket.agent} color="info" variant="outlined" sx={{ width: 100, overflow: 'hidden', textOverflow: 'ellipsis' }} /></Tooltip>
+                  <Tooltip title={ticket.agent}><Chip label={ticket.agent.length > 25 ? ticket.agent.slice(0, 25) + '…' : ticket.agent} color="info" variant="outlined" sx={{ width: 80, overflow: 'hidden', textOverflow: 'ellipsis' }} /></Tooltip>
                 )}
                 {ticket.agent && ticket.agent.trim() !== "" && (
                   <Typography>{ticket.agentCost}</Typography>
