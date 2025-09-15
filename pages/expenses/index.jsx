@@ -179,8 +179,21 @@ export default function ExpensesPage() {
             <Typography variant="h6" color="text.secondary">No expenses found</Typography>
           </Box>
         )}
-        {!loading && pageExpenses.map(exp => (
-          <Paper key={exp.id} elevation={2} sx={{ width: '100%', minHeight: 66, display: 'flex', alignItems: 'center', boxSizing: 'border-box', p: 1.5, mb: 1, borderRadius: 1, overflow: 'hidden' }}>
+        {!loading && pageExpenses.map((exp, idx) => (
+          <Paper 
+            key={exp.id}
+            elevation={2}
+            sx={{
+              width: '100%', 
+              display: 'flex', 
+              alignItems: 'center', 
+              boxSizing: 'border-box', 
+              p: 1, 
+              mb: 1, 
+              borderRadius: 1,
+              backgroundColor: idx % 2 === 0 ? '#e3e4e5' : '#f3f4f5',
+            }}
+            >
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
               <Stack direction="row" flexWrap="wrap" spacing={2} alignItems="center" sx={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
                 <Tooltip title={exp.type}><Chip label={exp.type} color={exp.type === 'Ingress' ? 'success' : (exp.type === 'Egress' ? 'warning' : 'default')} variant="outlined" sx={{ minWidth: 80, maxWidth: 100 }} /></Tooltip>
@@ -190,7 +203,7 @@ export default function ExpensesPage() {
                 <Typography sx={{ minWidth: 110 }}>{exp.paymentDate}</Typography>
                 <Tooltip title={exp.desc}><Chip label={exp.desc && exp.desc.length > 12 ? exp.desc.slice(0, 12) + '…' : exp.desc} sx={{ minWidth: 80, maxWidth: 120 }} /></Tooltip>
                 <Tooltip title={exp.category}><Chip label={exp.category} sx={{ minWidth: 80, maxWidth: 120 }} /></Tooltip>
-                <Tooltip title={exp.subcategory}><Chip label={exp.subcategory} sx={{ minWidth: 80, maxWidth: 120 }} /></Tooltip>
+                {exp.subcategory ? <Tooltip title={exp.subcategory}><Chip label={exp.subcategory} sx={{ minWidth: 80, maxWidth: 120 }} /></Tooltip> : ''}
                 <Tooltip title={exp.status}><Chip label={exp.status} color={exp.status === 'Completed' ? 'success' : 'warning'} sx={{ minWidth: 95, maxWidth: 120 }} /></Tooltip>
               </Stack>
               <Stack direction="row" spacing={1} alignItems="center">

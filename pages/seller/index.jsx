@@ -181,7 +181,15 @@ export default function SuppliersTransfersPage() {
       {!loading && operations && Object.keys(operations).length > 0 && (
         <Box sx={{ width: '100%', mb: 2 }}>
           {Object.keys(operations).map((key, i) => (
-            <Accordion key={key} sx={{ mb: 2, bgcolor: '#fcfcfc', boxShadow: 2 }}>
+            <Accordion 
+            key={key} 
+            sx={{ 
+              mb: 2,
+              borderRadius: 1,
+              backgroundColor: i % 2 === 0 ? '#e3e4e5' : '#f3f4f5',
+              boxShadow: 2 
+              }}
+            >
               <AccordionSummary expandIcon={<ExpandMoreIcon />}>                 
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', width: '100%' }}>
                   <Typography sx={{ fontWeight: 600, mr: 2 }}>{i+1} - Bonifico</Typography>

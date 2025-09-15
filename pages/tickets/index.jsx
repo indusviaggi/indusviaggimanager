@@ -512,7 +512,7 @@ function Index() {
             <Typography variant="h6" color="text.secondary">No tickets found, try changing filters</Typography>
           </Box>
         )}
-        {!loading && pageTickets.map(ticket => (
+        {!loading && pageTickets.map((ticket, idx) => (
           <Paper
             key={ticket.id}
             elevation={2}
@@ -525,6 +525,7 @@ function Index() {
               mb: 1,
               borderRadius: 1,
               overflow: 'hidden',
+              backgroundColor: idx % 2 === 0 ? '#e3e4e5' : '#f3f4f5',
             }}
           >
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', height: '100%', overflow: 'hidden' }}>
@@ -532,7 +533,7 @@ function Index() {
                 <Tooltip title={ticket.name}><Chip label={ticket.name.length > 25 ? ticket.name.slice(0, 25) + '…' : ticket.name} color="primary" variant="outlined" sx={{ width: 200, overflow: 'hidden', textOverflow: 'ellipsis' }} /></Tooltip>
                 <Tooltip title={ticket.bookingCode}><Chip label={ticket.bookingCode.length > 25 ? ticket.bookingCode.slice(0, 25) + '…' : ticket.bookingCode} color="secondary" variant="outlined" sx={{ width: 100, overflow: 'hidden', textOverflow: 'ellipsis' }} /></Tooltip>
                 <Typography sx={{ fontWeight: 500 }}>{ticket.ticketNumber}</Typography>
-                <Typography>{ticket.iata}</Typography>
+                <Tooltip title={ticket.iata}><Chip label={ticket.iata.length > 25 ? ticket.iata.slice(0, 25) + '…' : ticket.iata} color="tertiary" variant="outlined" sx={{ width: 100, overflow: 'hidden', textOverflow: 'ellipsis' }} /></Tooltip>
                 <Typography
                   color={Number(ticket.profit.replace(/[^\d.-]/g, '')) < 0 ? 'error.main' : 'success.main'}>
                   {ticket.profit}
@@ -540,13 +541,13 @@ function Index() {
                 <Typography>{ticket.paidAmount}</Typography>
                 <Typography>{ticket.receivingAmountT}</Typography>
                 <Typography>{ticket.bookedOn}</Typography>
+                <Typography variant='body2'>{ticket.methods}</Typography>
                 {ticket.agent && ticket.agent.trim() !== "" && (
                   <Tooltip title={ticket.agent}><Chip label={ticket.agent.length > 25 ? ticket.agent.slice(0, 25) + '…' : ticket.agent} color="info" variant="outlined" sx={{ width: 100, overflow: 'hidden', textOverflow: 'ellipsis' }} /></Tooltip>
                 )}
                 {ticket.agent && ticket.agent.trim() !== "" && (
                   <Typography>{ticket.agentCost}</Typography>
                 )}
-                <Typography variant='body2'>{ticket.methods}</Typography>
               </Stack>
               <Stack direction="row">
                 <Tooltip title="Info"><IconButton onClick={() => infoTicket(ticket)}><InfoIcon /></IconButton></Tooltip>

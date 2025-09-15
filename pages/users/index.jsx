@@ -51,8 +51,21 @@ export default function UserPage() {
             <Typography variant="h6" color="text.secondary">No Users To Display</Typography>
           </Box>
         )}
-        {users && pageUsers.map(user => (
-          <Paper key={user.id} elevation={2} sx={{ width: '100%', height: 68, display: 'flex', alignItems: 'center', boxSizing: 'border-box', p: 1, mb: 1, borderRadius: 1, overflow: 'hidden' }}>
+        {users && pageUsers.map((user, idx) => (
+        <Paper 
+          key={user.id}
+          elevation={2}
+          sx={{
+            width: '100%', 
+            display: 'flex', 
+            alignItems: 'center', 
+            boxSizing: 'border-box', 
+            p: 1, 
+            mb: 1, 
+            borderRadius: 1,
+            backgroundColor: idx % 2 === 0 ? '#e3e4e5' : '#f3f4f5',
+          }}
+          >
             <Stack 
               direction={{ xs: "column", sm: "row" }}
               spacing={2}
@@ -60,8 +73,8 @@ export default function UserPage() {
               flexWrap="wrap"
               sx={{ flex: 1, minWidth: 0, overflow: 'hidden' }}
             >
-              <Tooltip title={user.firstName + ' ' + user.lastName}><Chip label={user.firstName + ' ' + user.lastName} color="primary" sx={{ width: 150 }}/></Tooltip>
-              <Tooltip title={user.email}><Chip label={user.email} sx={{ width: 170 }}/></Tooltip>
+              <Tooltip title={user.firstName + ' ' + user.lastName}><Chip label={user.firstName + ' ' + user.lastName} color="primary" variant="outlined" sx={{ width: 150 }}/></Tooltip>
+              <Tooltip title={user.email} color="secondary" variant="outlined"><Chip label={user.email} sx={{ width: 170 }}/></Tooltip>
               <Typography sx={{ width: 80 }}>€ {user.balance}</Typography>
               <Typography sx={{ width: 70 }}>{user.level}</Typography>
               <Typography sx={{ width: 70 }}>{user.code}</Typography>

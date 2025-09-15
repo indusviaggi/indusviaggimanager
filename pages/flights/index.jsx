@@ -45,15 +45,27 @@ export default function NextFlightsPage() {
             <Typography variant="h6" color="text.secondary">No flights in next 2 days</Typography>
           </Box>
         )}
-        {tickets && tickets.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map(ticket => (
-          <Paper key={ticket.id} elevation={2} sx={{ width: '100%', display: 'flex', alignItems: 'center', boxSizing: 'border-box', p: 2, mb: 2, borderRadius: 2, minHeight: 72 }}>
+        {tickets && tickets.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((ticket, idx) => (
+          <Paper 
+            key={ticket.id} 
+            elevation={2}
+            sx={{ 
+              width: '100%', 
+              display: 'flex', 
+              alignItems: 'center', 
+              boxSizing: 'border-box', 
+              p: 1, 
+              mb: 1, 
+              borderRadius: 1,
+              backgroundColor: idx % 2 === 0 ? '#e3e4e5' : '#f3f4f5',
+              }}>
             <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
               <Stack 
                 direction={{ xs: "column", sm: "row" }} 
                 spacing={2} alignItems="flex-start" flexWrap="wrap" sx={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
                 <Tooltip title={ticket.name}><Chip label={ticket.name.length > 20 ? ticket.name.slice(0, 20) + '…' : ticket.name} color="primary" variant="outlined" sx={{ width: 170, overflow: 'hidden', textOverflow: 'ellipsis' }} /></Tooltip>
                 <Tooltip title={ticket.bookingCode}><Chip label={ticket.bookingCode.length > 14 ? ticket.bookingCode.slice(0, 13) + '…' : ticket.bookingCode} color="secondary" variant="outlined" sx={{ width: 80, overflow: 'hidden', textOverflow: 'ellipsis' }} /></Tooltip>
-                <Tooltip title={ticket.flight}><Chip label={ticket.flight.length > 18 ? ticket.flight.slice(0, 17) + '…' : ticket.flight} color="info" variant="outlined" sx={{ width: 130, overflow: 'hidden', textOverflow: 'ellipsis' }} /></Tooltip>
+                <Tooltip title={ticket.flight}><Chip label={ticket.flight.length > 18 ? ticket.flight.slice(0, 17) + '…' : ticket.flight} color="tertiary" variant="outlined" sx={{ width: 130, overflow: 'hidden', textOverflow: 'ellipsis' }} /></Tooltip>
                 <Typography sx={{ textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{ticket.dates}</Typography>
               </Stack>
               <Stack direction="row" spacing={1}>

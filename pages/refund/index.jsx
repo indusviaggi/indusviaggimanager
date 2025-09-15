@@ -265,8 +265,21 @@ export default function RefundsPage() {
             <InfoIcon sx={{ color: 'info.main', fontSize: 48, mb: 1 }} />
             <Typography variant="h6" color="text.secondary">No refunds found</Typography>
           </Box> )}
-        {!loading && pageRefunds.map(refund => (
-          <Paper key={refund.id} elevation={2} sx={{ width: '100%', display: 'flex', alignItems: 'center', boxSizing: 'border-box', p: 1, mb: 1, borderRadius: 1, overflow: 'hidden' }}>
+        {!loading && pageRefunds.map((refund, idx) => (
+          <Paper 
+            key={refund.id}
+            elevation={2}
+            sx={{
+              width: '100%', 
+              display: 'flex', 
+              alignItems: 'center', 
+              boxSizing: 'border-box', 
+              p: 1, 
+              mb: 1, 
+              borderRadius: 1,
+              backgroundColor: idx % 2 === 0 ? '#e3e4e5' : '#f3f4f5',
+            }}
+            >
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', height: '100%', overflow: 'hidden' }}>
               <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
                 <Tooltip title={refund.name}><Chip label={refund.name && refund.name.length > 25 ? refund.name.slice(0, 25) + '…' : refund.name} color="primary" variant="outlined" sx={{ width: 180, overflow: 'hidden', textOverflow: 'ellipsis' }} /></Tooltip>
