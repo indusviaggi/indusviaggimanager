@@ -430,7 +430,7 @@ function Index() {
     row += 2;
 
     // Table
-    const headers = [["Name", "Booking Date", "PNR", "Ticket N.", "Cost", "Paid", "Remained"]];
+    const headers = [["Name", "Booking Date", "PNR", "Ticket N.", "Customer Cost", "Agent Cost", "Profit"]];
     const body = tickets.map(t => {
       const costStr = t.receivingAmountT || '';
       const paidStr = t.agentCost || '';
