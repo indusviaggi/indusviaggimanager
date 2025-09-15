@@ -10,7 +10,6 @@ import {
 } from "@mui/material";
 import AddIcon from '@mui/icons-material/Add';
 import InfoIcon from "@mui/icons-material/Info";
-import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import DownloadIcon from '@mui/icons-material/Download';
@@ -688,6 +687,7 @@ function Index() {
           <Paper
             key={ticket.id}
             elevation={2}
+            onDoubleClick={() => editTicket(ticket)}
             sx={{
               width: '100%',
               display: 'flex',
@@ -704,16 +704,16 @@ function Index() {
               <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
                 <Tooltip title={ticket.name}><Chip label={ticket.name.length > 25 ? ticket.name.slice(0, 25) + '…' : ticket.name} color="primary" variant="outlined" sx={{ width: 150, overflow: 'hidden', textOverflow: 'ellipsis' }} /></Tooltip>
                 <Tooltip title={ticket.bookingCode}><Chip label={ticket.bookingCode.length > 25 ? ticket.bookingCode.slice(0, 25) + '…' : ticket.bookingCode} color="secondary" variant="outlined" sx={{ width: 80, overflow: 'hidden', textOverflow: 'ellipsis' }} /></Tooltip>
-                <Typography sx={{ fontWeight: 500 }}>{ticket.ticketNumber}</Typography>
+                <Typography sx={{ fontWeight: 500, width: 150, minWidth: 150, maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ticket.ticketNumber}</Typography>
                 <Tooltip title={ticket.iata}><Chip label={ticket.iata.length > 25 ? ticket.iata.slice(0, 25) + '…' : ticket.iata} color="tertiary" variant="outlined" sx={{ width: 80, overflow: 'hidden', textOverflow: 'ellipsis' }} /></Tooltip>
                 <Typography
                   color={Number(ticket.profit.replace(/[^\d.-]/g, '')) < 0 ? 'error.main' : 'success.main'}>
                   {ticket.profit}
                 </Typography>
-                <Typography>{ticket.paidAmount}</Typography>
-                <Typography>{ticket.receivingAmountT}</Typography>
-                <Typography>{ticket.bookedOn}</Typography>
-                <Typography variant='body2'>{ticket.methods}</Typography>
+                <Typography sx={{ width: 100, minWidth: 100, maxWidth: 100, textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ticket.paidAmount}</Typography>
+                <Typography sx={{ width: 100, minWidth: 100, maxWidth: 100, textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ticket.receivingAmountT}</Typography>
+                <Typography sx={{ width: 100, minWidth: 100, maxWidth: 100, textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ticket.bookedOn}</Typography>
+                <Typography variant='body2' sx={{ width: 100, minWidth: 100, maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ticket.methods}</Typography>
                 {ticket.agent && ticket.agent.trim() !== "" && (
                   <Tooltip title={ticket.agent}><Chip label={ticket.agent.length > 25 ? ticket.agent.slice(0, 25) + '…' : ticket.agent} color="info" variant="outlined" sx={{ width: 80, overflow: 'hidden', textOverflow: 'ellipsis' }} /></Tooltip>
                 )}
@@ -723,8 +723,7 @@ function Index() {
               </Stack>
               <Stack direction="row">
                 <Tooltip title="Info"><IconButton onClick={() => infoTicket(ticket)}><InfoIcon /></IconButton></Tooltip>
-                <Tooltip title="Edit"><IconButton onClick={() => editTicket(ticket)}><EditIcon color="primary" /></IconButton></Tooltip>
-                <Tooltip title="Delete"><IconButton onClick={() => confirmDeleteTicket(ticket)}><DeleteIcon color="secondary" /></IconButton></Tooltip>
+                                <Tooltip title="Delete"><IconButton onClick={() => confirmDeleteTicket(ticket)}><DeleteIcon color="secondary" /></IconButton></Tooltip>
                 <Tooltip title="Export PDF"><IconButton onClick={() => downloadTicket(ticket)}><PictureAsPdfIcon color="error" /></IconButton></Tooltip>
               </Stack>
             </Box>
