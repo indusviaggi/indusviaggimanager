@@ -388,7 +388,7 @@ function Index() {
     let totalCost = 0;
     let totalPaid = 0;
     tickets.forEach(t => {
-      const costN = parseFloat(String(t.paidAmount || '0').replace(/[^\d.-]/g, '')) || 0;
+      const costN = parseFloat(String(t.agentCost || '0').replace(/[^\d.-]/g, '')) || 0;
       const paidN = parseFloat(String(t.receivingAmountT || '0').replace(/[^\d.-]/g, '')) || 0;
       totalCost += costN;
       totalPaid += paidN;
@@ -414,9 +414,7 @@ function Index() {
     doc.text("Cell.: +39 3889220982, +39 3802126100", 200, row, null, null, "right");
     row += 10;
     doc.text(
-      "Total Cost: € " + totalCost.toFixed(2) +
-      " - Total Paid: € " + totalPaid.toFixed(2) +
-      " - Remained: € " + totalRemained.toFixed(2),
+      "Total Cost: € " + totalCost.toFixed(2),
       10,
       row,
       null,
@@ -430,7 +428,7 @@ function Index() {
     row += 2;
 
     // Table
-    const headers = [["Name", "Booking Date", "PNR", "Ticket N.", "Customer Cost", "Agent Cost", "Profit"]];
+    const headers = [["Name", "Booking Date", "PNR", "Ticket N.", "Agent Cost"]];
     const body = tickets.map(t => {
       const costStr = t.receivingAmountT || '';
       const paidStr = t.agentCost || '';
@@ -442,9 +440,7 @@ function Index() {
         t.bookedOn || '',
         t.bookingCode || '',
         t.ticketNumber || '',
-        costStr,
         paidStr,
-        "€ " + remained.toFixed(2),
       ];
     });
     doc.autoTable({ startY: row, head: headers, body });
