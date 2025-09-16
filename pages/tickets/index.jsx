@@ -427,7 +427,7 @@ function Index() {
     row += 2;
 
     // Table
-    const headers = [["Name", "Booking Date", "PNR", "Ticket N.", "Agent Cost"]];
+    const headers = [["Name", "Booking Date", "PNR", "Ticket N.", "Agent Cost", "Fully Paid"]];
     const body = tickets.map(t => {
       const costStr = t.receivingAmountT || '';
       const paidStr = t.agentCost || '';
@@ -440,6 +440,7 @@ function Index() {
         t.bookingCode || '',
         t.ticketNumber || '',
         paidStr,
+        remained >= 0 ? 'Yes' : '€ ' + remained.toString().replace('-', '') + ' to pay'
       ];
     });
     doc.autoTable({ startY: row, head: headers, body });
@@ -707,13 +708,14 @@ function Index() {
                 <Typography sx={{ fontWeight: 500, width: 150, minWidth: 150, maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ticket.ticketNumber}</Typography>
                 <Tooltip title={ticket.iata}><Chip label={ticket.iata.length > 25 ? ticket.iata.slice(0, 25) + '…' : ticket.iata} color="tertiary" variant="outlined" sx={{ width: 80, overflow: 'hidden', textOverflow: 'ellipsis' }} /></Tooltip>
                 <Typography
+                  sx={{width: 80, minWIdth: 80, maxWidth: 80, textAllign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
                   color={Number(ticket.profit.replace(/[^\d.-]/g, '')) < 0 ? 'error.main' : 'success.main'}>
                   {ticket.profit}
                 </Typography>
-                <Typography sx={{ width: 100, minWidth: 100, maxWidth: 100, textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ticket.paidAmount}</Typography>
-                <Typography sx={{ width: 100, minWidth: 100, maxWidth: 100, textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ticket.receivingAmountT}</Typography>
+                <Typography sx={{ width: 80, minWidth: 80, maxWidth: 80, textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ticket.paidAmount}</Typography>
+                <Typography sx={{ width: 80, minWidth: 80, maxWidth: 80, textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ticket.receivingAmountT}</Typography>
                 <Typography sx={{ width: 100, minWidth: 100, maxWidth: 100, textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ticket.bookedOn}</Typography>
-                <Typography variant='body2' sx={{ width: 100, minWidth: 100, maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ticket.methods}</Typography>
+                <Typography variant='body2' sx={{ width: 80, minWidth: 80, maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ticket.methods}</Typography>
                 {ticket.agent && ticket.agent.trim() !== "" && (
                   <Tooltip title={ticket.agent}><Chip label={ticket.agent.length > 25 ? ticket.agent.slice(0, 25) + '…' : ticket.agent} color="info" variant="outlined" sx={{ width: 80, overflow: 'hidden', textOverflow: 'ellipsis' }} /></Tooltip>
                 )}
