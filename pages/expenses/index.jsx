@@ -1,13 +1,16 @@
 import { Layout } from "components/expenses";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Router from "next/router";
-import { formatDate, expensesService } from "../../services";
+import { formatDate, expensesService, alertService, categories } from "../../services";
 import {
-  Paper, Typography, Box, Stack, IconButton, Tooltip, Chip, Button, CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions
+  Paper, Typography, Box, Stack, IconButton, Tooltip, Chip, Button, CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions, List, ListItem, ListItemText, ListItemIcon
 } from "@mui/material";
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
+import UploadFileIcon from '@mui/icons-material/UploadFile';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import ErrorIcon from '@mui/icons-material/Error';
 import DownloadIcon from '@mui/icons-material/Download';
 import InfoIcon from "@mui/icons-material/Info";
 
@@ -16,12 +19,17 @@ export default function ExpensesPage() {
   const [expense, setExpense] = useState(null);
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [dates, setDates] = useState({ start: "", end: "", type: "paymentDate" });
   const [totals, setTotals] = useState([0]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(50);
   const [searchField, setSearchField] = useState("all");
   const [globalSearch, setGlobalSearch] = useState("");
+  const fileInputRef = useRef(null);
+  const [uploadResultDialog, setUploadResultDialog] = useState(false);
+  const [uploadSuccess, setUploadSuccess] = useState([]);
+  const [uploadErrors, setUploadErrors] = useState([]);
 
   useEffect(() => {
     getExpenses();
@@ -111,13 +119,112 @@ export default function ExpensesPage() {
     window.URL.revokeObjectURL(url);
   };
 
+  const downloadTemplate = () => {
+    const fields = ["title", "desc", "category", "subcategory", "type", "paymentMethod", "amount", "paymentDate", "status"];
+    const csvHeader = fields.join(",");
+    const blob = new Blob([csvHeader], { type: "text/csv" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'expenses_template.csv';
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
+  const handleUploadClick = () => {
+    fileInputRef.current.click();
+  };
+
+  const handleFileChange = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    setUploading(true);
+    alertService.clear();
+    const reader = new FileReader();
+
+    reader.onload = async (e) => {
+      const text = e.target.result;
+      const lines = text.split(/\r\n|\n/).filter(line => line.trim() !== '');
+      const header = lines[0].split(',').map(h => h.trim());
+      const expectedHeader = ["title", "desc", "category", "subcategory", "type", "paymentMethod", "amount", "paymentDate", "status"];
+      
+      if (JSON.stringify(header) !== JSON.stringify(expectedHeader)) {
+        alertService.error("CSV header does not match the template.");
+        setUploading(false);
+        return;
+      }
+
+      const categoryMap = categories.reduce((acc, cat, index) => {
+        acc[index + 1] = cat.key;
+        return acc;
+      }, {});
+      const typeMap = { 1: 'Egress', 2: 'Ingress' };
+      const statusMap = { 1: 'Completed', 2: 'Pending' };
+
+      const successes = [];
+      const errors = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        // Handle commas within quoted fields
+        const values = lines[i].match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g).map(v => v.replace(/"/g, ''));
+
+        const expenseData = {
+          title: values[0],
+          desc: values[1] || '',
+          category: categoryMap[values[2]] || '',
+          subcategory: values[3] || '',
+          type: typeMap[values[4]] || '',
+          paymentMethod: values[5],
+          amount: parseFloat(values[6]),
+          paymentDate: values[7],
+          status: statusMap[values[8]] || 'Completed',
+        };
+
+        // Validation
+        const paymentDateObj = new Date(expenseData.paymentDate);
+
+        if (!expenseData.title || !expenseData.category || !expenseData.type || !expenseData.paymentMethod || isNaN(expenseData.amount) || isNaN(paymentDateObj.getTime())) {
+          errors.push({ line: i + 1, error: 'Invalid or missing required fields. Check title, category, type, paymentMethod, amount, and paymentDate.', data: expenseData });
+          continue;
+        }
+
+        try {
+          const newExpense = {
+            ...expenseData,
+            amount: `€ ${expenseData.amount.toFixed(2)}`,
+            paymentDate: formatDate(paymentDateObj),
+          };
+          await expensesService.create(newExpense);
+          successes.push({ line: i + 1, title: newExpense.title });
+        } catch (error) {
+          errors.push({ line: i + 1, error: error.message || 'Failed to create expense.', data: expenseData });
+        }
+      }
+
+      setUploadSuccess(successes);
+      setUploadErrors(errors);
+      setUploadResultDialog(true);
+      setUploading(false);
+      if (successes.length > 0) {
+        getExpenses(); // Refresh list
+      }
+    };
+
+    reader.readAsText(file);
+    // Reset file input
+    event.target.value = null;
+  };
+
   const pageExpenses = filteredExpenses.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
   const totalPages = Math.ceil(filteredExpenses.length / rowsPerPage);
 
   const calculate = (data) => {
     let ts = 0;
     for (let i = 0; i < data.length; i++) {
-      let ttr = data[i].amount ? data[i].amount.replace("€ ", "") : 0;
+      // Safely parse amount, handling both string "€ 12.34" and number 12.34
+      const amountStr = String(data[i].amount || '0').replace(/[^\d.-]/g, '');
+      let ttr = parseFloat(amountStr) || 0;
       ts += parseFloat(ttr);
     }
     setTotals(["€ " + ts.toFixed(2)]);
@@ -153,7 +260,20 @@ export default function ExpensesPage() {
       <Paper elevation={1} style={{ margin: "10px 0 20px 0", padding: "16px", background: "#f5f5f5", display: "flex", gap: 24, flexWrap: "wrap", alignItems: "center", justifyContent: "space-between" }}>
         <Typography color="black">Expenses: {filteredExpenses.length}</Typography>
         <Typography color="black">Total: {totals[0]}</Typography>
+        <input
+          type="file"
+          ref={fileInputRef}
+          style={{ display: 'none' }}
+          accept=".csv"
+          onChange={handleFileChange}
+        />
         <Box sx={{ display:'flex', gap:1 }}>
+          <Tooltip title="Download Template">
+            <IconButton color="info" onClick={downloadTemplate}><DownloadIcon /></IconButton>
+          </Tooltip>
+          <Tooltip title="Upload CSV">
+            <IconButton color="secondary" onClick={handleUploadClick} disabled={uploading}>{uploading ? <CircularProgress size={24} /> : <UploadFileIcon />}</IconButton>
+          </Tooltip>
           <Tooltip title="Export Excel">
             <IconButton color="success" onClick={exportCSV}>
               <DownloadIcon />
@@ -246,6 +366,35 @@ export default function ExpensesPage() {
         <DialogActions>
           <Button onClick={() => setDeleteDialog(false)}>No</Button>
           <Button color="error" onClick={deleteExpense}>Yes</Button>
+        </DialogActions>
+      </Dialog>
+      {/* Upload result dialog */}
+      <Dialog open={uploadResultDialog} onClose={() => setUploadResultDialog(false)} maxWidth="md" fullWidth>
+        <DialogTitle>Upload Results</DialogTitle>
+        <DialogContent>
+          {uploadSuccess.length > 0 && (
+            <>
+              <Typography variant="h6" color="success.main">Successfully Uploaded ({uploadSuccess.length})</Typography>
+              <List dense>
+                {uploadSuccess.map(s => (
+                  <ListItem key={s.line}><ListItemIcon><CheckCircleIcon color="success" /></ListItemIcon><ListItemText primary={`Line ${s.line}: ${s.title}`} /></ListItem>
+                ))}
+              </List>
+            </>
+          )}
+          {uploadErrors.length > 0 && (
+            <>
+              <Typography variant="h6" color="error.main" sx={{ mt: 2 }}>Errors ({uploadErrors.length})</Typography>
+              <List dense>
+                {uploadErrors.map(e => (
+                  <ListItem key={e.line}><ListItemIcon><ErrorIcon color="error" /></ListItemIcon><ListItemText primary={`Line ${e.line}: ${e.error}`} secondary={JSON.stringify(e.data)} /></ListItem>
+                ))}
+              </List>
+            </>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setUploadResultDialog(false)}>Close</Button>
         </DialogActions>
       </Dialog>
     </Layout>
