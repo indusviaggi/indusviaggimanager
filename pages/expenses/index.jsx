@@ -174,7 +174,7 @@ export default function ExpensesPage() {
           desc: values[1] || '',
           category: categoryMap[values[2]] || '1',
           subcategory: values[3] || '',
-          type: typeMap[values[4]] || '1',
+          type: typeMap[values[4]] || 'Egress',
           paymentMethod: values[5],
           amount: parseFloat(values[6]),
           paymentDate: values[7],
