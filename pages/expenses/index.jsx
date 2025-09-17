@@ -192,7 +192,7 @@ export default function ExpensesPage() {
         try {
           const newExpense = {
             ...expenseData,
-            amount: `€ ${expenseData.amount.toFixed(2)}`,
+            amount: expenseData.amount,
             paymentDate: formatDate(paymentDateObj),
           };
           await expensesService.create(newExpense);
