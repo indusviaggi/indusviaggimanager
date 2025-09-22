@@ -611,7 +611,7 @@ async function upload(files) {
     } else {
       if (f?.ticketNumber && !created.includes(f.ticketNumber)) {
         console.log(f);
-        //create(f);
+        create(f);
         created.push(f.ticketNumber);
       }
     }
@@ -757,14 +757,112 @@ async function uploadAirArabia(files) {
     // Ensure we don't process the same ticket number twice in the same batch
     if (ticket?.ticketNumber && !createdTickets.includes(ticket.ticketNumber)) {
       console.log(ticket);
-      //await create(ticket);
+      await create(ticket);
       createdTickets.push(ticket.ticketNumber);
     }
   }
 }
 
 async function uploadWizzAir(files) {
-  // TODO: Implement Wizz Air file parsing logic
+  const users = await fetchWrapper.get(usersUrl);
+  let agl = {};
+  let admin = "";
+  let agency = "";
+  users.forEach((userT) => {
+    let nameT = `${userT.firstName} ${userT.lastName}`;
+    if (userT.level === "admin") admin = userT.id;
+    if (nameT.toLowerCase().includes("agency")) agency = userT.id;
+    agl[userT.code] = userT.id;
+  });
+
+  const allTickets = [];
+
+  for (const fileContent of files) {
+    // --- Extract Common Information ---
+    const bookingCodeMatch = fileContent.match(/(?:Codice di conferma volo|Flight confirmation code|Confirmation code):\s*(\w+)/);
+    const bookingCode = bookingCodeMatch ? bookingCodeMatch[1] : '';
+
+    const paymentDateMatch = fileContent.match(/(?:Data di pagamento|Payment date)\s+(\d{2}\/\d{2}\/\d{4})/);
+    const bookedOn = paymentDateMatch ? formatDate(paymentDateMatch[1], "IT") : formatDate(new Date());
+
+    const flightNumMatch = fileContent.match(/(?:Numero di volo|Flight Number):\s*([^\r\n]+)/);
+    const flight = flightNumMatch ? flightNumMatch[1].trim() : 'Wizz Air';
+
+    const travelMatch = fileContent.match(/(?:Partenza da|Departs from):\s*(?:Arrivo a|Arrives to):\s*\r?\n\s*([\w\s()-]+?)\s+([\w\s()-]+)/);
+    const travel1 = travelMatch ? travelMatch[1].trim() : '';
+    const travel2 = travelMatch ? travelMatch[2].trim() : '';
+
+    const dateMatch = fileContent.match(/(\d{2}\/\d{2}\/\d{2,4})\s+\d{2}:\d{2}\s+(\d{2}\/\d{2}\/\d{2,4})\s+\d{2}:\d{2}/);
+    const dates = dateMatch ? `${dateMatch[1]} - ${dateMatch[2]}` : '';
+
+    const agentNameMatch = fileContent.match(/(?:Nome di contatto del cliente|Customer contact name):\s*([\s\S]*?)(?:Società del cliente|Customer company):/);
+    const agentName = agentNameMatch ? agentNameMatch[1].replace(/MR|MRS|MS/g, '').trim() : '';
+    const agent = Object.keys(agl).find(key => agl[key] === agentName) || agentName;
+
+    // --- Extract Passenger and Payment Details ---
+    const passengerSectionMatch = fileContent.match(/(?:Dati del passeggero|Passenger info)([\s\S]*?)(?:Dettagli volo|Flight details)/);
+    const paymentSectionMatch = fileContent.match(/(?:Riepilogo del pagamento|Payment summary)([\s\S]*?)(?:Informazioni sulla prenotazione|Reservation information)/);
+
+    if (passengerSectionMatch) {
+      // Extract all individual fare prices
+      const farePriceMatches = paymentSectionMatch ? [...paymentSectionMatch[1].matchAll(/(?:Tariffa|Fare price)\s+([\d.]+)\s+EUR/g)] : [];
+
+      const passengerRows = passengerSectionMatch[1].matchAll(/(MS|MR|MRS|CHD)\s+([\w\s]+?)\s+([\w\s]+?)\s+([A-Z]{3}-[A-Z]{3})/g);
+
+      let passengerIndex = 0;
+      for (const passengerMatch of passengerRows) {
+        const title = passengerMatch[1];
+        const firstName = passengerMatch[2];
+        const lastName = passengerMatch[3];
+        const passengerName = `${title} ${firstName} ${lastName}`;
+
+        // Assign fare price based on passenger order
+        const paidAmount = farePriceMatches[passengerIndex] ? parseFloat(farePriceMatches[passengerIndex][1]) : 0;
+        
+        const tkt = {
+          name: passengerName,
+          bookingCode: bookingCode,
+          agent: '',
+          agentId: agl.hasOwnProperty(agent) ? agl[agent] : agency || admin || "123456789012345678901234",
+          iata: 'Wizz Air',
+          office: '',
+          agentCost: 0,
+          ticketNumber: `${bookingCode}-${passengerIndex + 1}`, // Make ticket number unique per passenger
+          paymentMethod: '',
+          paidAmount: paidAmount,
+          receivingAmount1: 0,
+          receivingAmount1Date: '',
+          receivingAmount2Date: '',
+          receivingAmount2Method: "",
+          receivingAmount3Date: '',
+          receivingAmount3Method: "",
+          receivingAmount2: 0,
+          receivingAmount3: 0,
+          cardNumber: '',
+          isVoid: false,
+          bookedOn: bookedOn,
+          travel1: travel1,
+          travel2: travel2,
+          dates: dates,
+          phone: '',
+          flight: flight,
+          refund: "",
+          refundDate: "",
+          desc: "",
+          supplied: 0,
+          returned: 0,
+          returnedDate: "",
+          paidByAgent: 0,
+        };
+        allTickets.push(tkt);
+        passengerIndex++;
+      }
+    }
+  }
+  for (const ticket of allTickets) {
+    console.log(ticket);
+    await create(ticket);
+  }
 }
 
 async function uploadFlixbus(files) {

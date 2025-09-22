@@ -26,6 +26,8 @@ function Index() {
     "NOV",
     "DEC",
     "ARAB",
+    "WIZZ",
+    "FLIX"
   ];
 
   function readInput(e) {
