@@ -32,6 +32,9 @@ export const ticketsService = {
   getTicketsByAgent,
   getFlights,
   getBookings,
+  uploadAirArabia,
+  uploadWizzAir,
+  uploadFlixbus,
 };
 
 async function getTicketsForSupply(filters = {}) {
@@ -607,10 +610,163 @@ async function upload(files) {
       findAndUpdate(params);
     } else {
       if (f?.ticketNumber && !created.includes(f.ticketNumber)) {
-        //console.log(f);
-        create(f);
+        console.log(f);
+        //create(f);
         created.push(f.ticketNumber);
       }
     }
   });
+}
+
+async function uploadAirArabia(files) {
+  const users = await fetchWrapper.get(usersUrl);
+  let agl = {};
+  let admin = "";
+  let agency = "";
+  users.forEach((userT) => {
+    let nameT = `${userT.firstName} ${userT.lastName}`;
+    if (userT.level === "admin") admin = userT.id;
+    if (nameT.toLowerCase().includes("agency")) agency = userT.id;
+    agl[userT.code] = userT.id;
+  });
+
+  const allTickets = [];
+
+  for (const fileContent of files) {
+    const lines = fileContent.split('\n').map(line => line.trim());
+
+    // --- Extract Common Information ---
+    const pnrMatch = fileContent.match(/RESERVATION NUMBER \(PNR\)\s*(\w+)/);
+    const bookingCode = pnrMatch ? pnrMatch[1] : '';
+
+    const bookingDateMatch = fileContent.match(/DATE OF BOOKING\s*(\d{2} \w{3} \d{4})/);
+    const bookedOn = bookingDateMatch ? formatDate(new Date(bookingDateMatch[1])) : formatDate(new Date());
+
+    const agentDetailsMatch = fileContent.match(/AGENT DETAILS\s*([\s\S]*?)\s*TRAVEL SEGMENTS/);
+    const agentCode = agentDetailsMatch ? (agentDetailsMatch[1].match(/\(([^)]+)\)/) || [])[1] : '';
+
+    const airlineLegendMatch = fileContent.match(/AIRLINE CODE LEGEND\s*3O\s+-\s+(Air Arabia Maroc)/);
+    const airlineName = airlineLegendMatch ? airlineLegendMatch[1].trim() : '';
+
+    const contactDetailsMatch = fileContent.match(/PASSENGER CONTACT DETAILS\s*([\s\S]*?)\s*AGENT DETAILS/);
+    const phone = contactDetailsMatch ? (contactDetailsMatch[1].match(/(\d{2}-\d{3,}-\d{6,})/) || [])[0] : '';
+
+    // --- Extract Travel Segments ---
+    const travelSegmentsMatch = fileContent.match(/TRAVEL SEGMENTS([\s\S]*?)LOCAL CALL CENTER/);
+    let travel1 = '', travel2 = '', dates = '', flight = '', allFlights = [];
+    if (travelSegmentsMatch) {
+        // Split the segment block by "Duration:" to isolate each flight leg
+        const segmentBlocks = travelSegmentsMatch[1].split(/Duration:/).filter(block => block.trim() !== '');
+        let segments = [];
+
+        for (const block of segmentBlocks) {
+            const flightNumMatch = block.match(/(\w{2}\d+)\s+\(Non-Stop\)/);
+            const originMatch = block.match(/\(Non-Stop\)\s+([\w\s]+?)\s+([\w, ]+\d{4})/);
+            const destinationMatch = block.match(/OK\s+([\w\s-]+?)\s+[\w, ]+\d{4}/);
+
+            if (flightNumMatch && originMatch && destinationMatch) {
+                allFlights.push(flightNumMatch[1]);
+                const departureDate = new Date(originMatch[2]);
+                const formattedDate = `${departureDate.getDate().toString().padStart(2, '0')}/${(departureDate.getMonth() + 1).toString().padStart(2, '0')}/${departureDate.getFullYear()}`;
+                segments.push({ origin: originMatch[1].trim(), destination: destinationMatch[1].trim(), date: formattedDate });
+            }
+        }
+
+        if (segments.length > 0) {
+            travel1 = `${segments[0].origin} - ${segments[0].destination}`;
+            dates = segments[0].date;
+        }
+        if (segments.length > 1) {
+            travel2 = `${segments[1].origin} - ${segments[1].destination}`;
+            dates = `${segments[0].date} - ${segments[1].date}`;
+        }
+        flight = airlineName || allFlights.join(' - ');
+    }
+
+    // --- Extract E-Ticket and Payment Details for each passenger ---
+    const eTicketSectionMatch = fileContent.match(/E TICKET DETAILS([\s\S]*?)ANCILLARY DETAILS/);
+    const paymentSectionMatch = fileContent.match(/PAYMENT DETAILS([\s\S]*?)\* All times in local/);
+
+    if (eTicketSectionMatch) {
+        const ticketRows = eTicketSectionMatch[1].matchAll(/(MR|MRS|MISS|Child\.)\s+([\w\s]+?)\s+\w{3}\/\w{3}\s+\w+\s+([\d\/]+)/g);
+
+        for (const ticketMatch of ticketRows) {
+            const passengerTitle = ticketMatch[1].trim();
+            const passengerName = `${passengerTitle} ${ticketMatch[2].trim()}`;
+            const ticketNumber = ticketMatch[3].split('/')[0];
+
+            // Find corresponding payment
+            let paidAmount = 0;
+            let paymentMethod = '';
+            // For child tickets, the payment details might not include "Child."
+            const searchName = passengerName.replace('Child. ', '');
+
+            if (paymentSectionMatch) {
+                const paymentRegex = new RegExp(`${searchName.replace('.', '\\.')}[\\s\\S]*?CARD PAYMENT - (\\w+)[\\s\\S]*?(\\d+\\.\\d{2}) EUR`);
+                const paymentDetails = paymentSectionMatch[1].match(paymentRegex);
+                if (paymentDetails) {
+                    paymentMethod = paymentDetails[1];
+                    paidAmount = parseFloat(paymentDetails[2]);
+                }
+            }
+
+            const tkt = {
+                name: passengerName,
+                bookingCode: bookingCode,
+                agent: agl.hasOwnProperty(agentCode) ? agl[agentCode] : '',
+                agentId: agl.hasOwnProperty(agentCode)
+                    ? agl[agentCode]
+                    : agency || admin || "123456789012345678901234",
+                iata: airlineName,
+                office: '', // Not available in this format
+                agentCost: 0, // Not available in this format
+                ticketNumber: ticketNumber,
+                paymentMethod: '',
+                paidAmount: paidAmount,
+                receivingAmount1: 0, // Default value
+                receivingAmount1Date: '',
+                receivingAmount2Date: '',
+                receivingAmount2Method: "",
+                receivingAmount3Date: '',
+                receivingAmount3Method: "",
+                receivingAmount2: 0,
+                receivingAmount3: 0,
+                cardNumber: '', // Not available in this format
+                isVoid: false,
+                bookedOn: bookedOn,
+                travel1: travel1,
+                travel2: travel2,
+                dates: dates,
+                phone: phone,
+                flight: flight,
+                refund: "",
+                refundDate: "",
+                desc: "",
+                supplied: 0,
+                returned: 0,
+                returnedDate: "",
+                paidByAgent: 0,
+            };
+            allTickets.push(tkt);
+        }
+    }
+  }
+
+  const createdTickets = [];
+  for (const ticket of allTickets) {
+    // Ensure we don't process the same ticket number twice in the same batch
+    if (ticket?.ticketNumber && !createdTickets.includes(ticket.ticketNumber)) {
+      console.log(ticket);
+      //await create(ticket);
+      createdTickets.push(ticket.ticketNumber);
+    }
+  }
+}
+
+async function uploadWizzAir(files) {
+  // TODO: Implement Wizz Air file parsing logic
+}
+
+async function uploadFlixbus(files) {
+  // TODO: Implement Flixbus file parsing logic
 }

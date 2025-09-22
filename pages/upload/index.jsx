@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { Button } from "@mui/material";
+import { Button, Radio, RadioGroup, FormControlLabel, FormControl, FormLabel } from "@mui/material";
 import { Spinner } from "components";
 import { Layout } from "components/users";
 import { alertService, ticketsService } from "services";
@@ -10,6 +10,7 @@ export default Index;
 function Index() {
   const [files, setFiles] = useState(null);
   const [content, setContent] = useState([]);
+  const [uploadType, setUploadType] = useState('amadeus');
 
   const months = [
     "JAN",
@@ -24,6 +25,7 @@ function Index() {
     "OCT",
     "NOV",
     "DEC",
+    "ARAB",
   ];
 
   function readInput(e) {
@@ -44,16 +46,18 @@ function Index() {
       setFiles(input.files);
     }
 
-    const data = [...content];
-    Object.keys(input.files).map((f, i) => {
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        const text = e.target.result;
-        data.push(text);
-        setContent(data);
-      };
-      reader.readAsText(e.target.files[i]);
-    });
+    const filePromises = Array.from(input.files).map(file => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result);
+        reader.onerror = (e) => reject(e);
+        reader.readAsText(file);
+      });
+    })
+
+    Promise.all(filePromises)
+      .then(allFileContents => setContent(prev => [...prev, ...allFileContents]))
+      .catch(err => alertService.error('Error reading files: ' + err));
   }
 
   function deleteItem(index) {
@@ -84,8 +88,22 @@ function Index() {
   }
 
   function onSubmit() {
-    return ticketsService
-      .upload(content)
+    let uploadPromise;
+    switch (uploadType) {
+      case 'airarabia':
+        uploadPromise = ticketsService.uploadAirArabia(content);
+        break;
+      case 'wizzair':
+        uploadPromise = ticketsService.uploadWizzAir(content);
+        break;
+      case 'flixbus':
+        uploadPromise = ticketsService.uploadFlixbus(content);
+        break;
+      case 'amadeus':
+      default:
+        uploadPromise = ticketsService.upload(content);
+    }
+    return uploadPromise
       .then(() => {
         alertService.success("File(s) uploaded successfully", true);
         setFiles([]);
@@ -97,6 +115,21 @@ function Index() {
   return (
     <Layout>
       <form id="uploadFile" method="POST" encType="multipart/form-data">
+        <FormControl component="fieldset" sx={{ mb: 2 }}>
+          <FormLabel component="legend">File Type</FormLabel>
+          <RadioGroup
+            row
+            aria-label="upload-type"
+            name="upload-type-group"
+            value={uploadType}
+            onChange={(e) => setUploadType(e.target.value)}
+          >
+            <FormControlLabel value="amadeus" control={<Radio />} label="Amadeus" />
+            <FormControlLabel value="airarabia" control={<Radio />} label="Air Arabia" />
+            <FormControlLabel value="wizzair" control={<Radio />} label="Wizz Air" />
+            <FormControlLabel value="flixbus" control={<Radio />} label="Flixbus" />
+          </RadioGroup>
+        </FormControl>
         <div id="FileUpload">
           <div className="wrapper">
             <div className="image-upload-wrap">
