@@ -718,7 +718,7 @@ async function uploadAirArabia(files) {
                 agentId: agl.hasOwnProperty(agentCode)
                     ? agl[agentCode]
                     : agency || admin || "123456789012345678901234",
-                iata: airlineName,
+                iata: 'AIR ARABIA MAROC',
                 office: '', // Not available in this format
                 agentCost: 0, // Not available in this format
                 ticketNumber: ticketNumber,
@@ -826,7 +826,7 @@ async function uploadWizzAir(files) {
           bookingCode: bookingCode,
           agent: '',
           agentId: agl.hasOwnProperty(agent) ? agl[agent] : agency || admin || "123456789012345678901234",
-          iata: 'Wizz Air',
+          iata: 'WIZZAIR',
           office: '',
           agentCost: 0,
           ticketNumber: `${bookingCode}-${passengerIndex + 1}`, // Make ticket number unique per passenger
@@ -869,6 +869,103 @@ async function uploadWizzAir(files) {
 }
 
 async function uploadFlixbus(files) {
-  // TODO: Implement Flixbus file parsing logic
-  return [];
+    const users = await fetchWrapper.get(usersUrl);
+    let agl = {};
+    let admin = "";
+    let agency = "";
+    users.forEach((userT) => {
+      let nameT = `${userT.firstName} ${userT.lastName}`;
+      if (userT.level === "admin") admin = userT.id;
+      if (nameT.toLowerCase().includes("agency")) agency = userT.id;
+      agl[userT.code] = userT.id;
+    });
+
+    const allTickets = [];
+    const monthMap = {
+        'gen': '01', 'feb': '02', 'mar': '03', 'apr': '04', 'mag': '05', 'giu': '06',
+        'lug': '07', 'ago': '08', 'set': '09', 'ott': '10', 'nov': '11', 'dic': '12'
+    };
+
+    for (const fileContent of files) {
+        const bookingCodeMatch = fileContent.match(/Prenotazione n\.\s*([\d\s]+)/);
+        const bookingCode = bookingCodeMatch ? bookingCodeMatch[1].replace(/\s/g, '') : '';
+
+        const departureMatch = fileContent.match(/Partenza\s+Stazione\s+([\w\s()-]+)\s+Orario/);
+        const travel1 = departureMatch ? departureMatch[1].trim() : '';
+
+        const arrivalMatch = fileContent.match(/Arrivo\s+Stazione\s+([\w\s()-]+)\s+Orario/);
+        const travel2 = arrivalMatch ? arrivalMatch[1].trim() : '';
+
+        const dateMatch = fileContent.match(/\w{3}\s(\d{2})\s(\w{3})→/);
+        let bookedOn = formatDate(new Date());
+        let dates = '';
+        if (dateMatch) {
+            const day = dateMatch[1];
+            const month = monthMap[dateMatch[2].toLowerCase()];
+            // The year is not in the file, so we assume the current year.
+            // This might need adjustment if tickets are for next year.
+            const year = new Date().getFullYear();
+            if (day && month && year) {
+                dates = `${day}/${month}/${year}`;
+                bookedOn = `${year}-${month}-${day}`;
+            }
+        }
+
+        const passengerBlockMatch = fileContent.match(/Passeggeri\/e ed extra\s*Icon\s*Adulto\/a\s*([\s\S]*?)Icon/);
+        if (!passengerBlockMatch) continue;
+
+        const passengerNames = passengerBlockMatch[1]
+            .trim()
+            .split(/\r?\n/)
+            .filter(name => name.trim() !== '')
+            .map(name => name.trim());
+
+        // In this format, the price is not available. Defaulting to 0.
+        const paidAmount = 0;
+
+        for (const name of passengerNames) {
+            const tkt = {
+                name: name,
+                bookingCode: bookingCode,
+                agent: '',
+                agentId: agency || admin || "123456789012345678901234", // Default to agency or admin
+                iata: 'FLIXBUS',
+                office: '',
+                agentCost: 0,
+                ticketNumber: `${bookingCode}-${allTickets.length + 1}`, // Unique ticket number
+                paymentMethod: '',
+                paidAmount: paidAmount,
+                receivingAmount1: 0,
+                receivingAmount1Date: '',
+                receivingAmount2Date: '',
+                receivingAmount2Method: "",
+                receivingAmount3Date: '',
+                receivingAmount3Method: "",
+                receivingAmount2: 0,
+                receivingAmount3: 0,
+                cardNumber: '',
+                isVoid: false,
+                bookedOn: bookedOn,
+                travel1: travel1,
+                travel2: travel2,
+                dates: dates,
+                phone: '',
+                flight: 'FlixBus',
+                refund: "",
+                refundDate: "",
+                desc: "",
+                supplied: 0,
+                returned: 0,
+                returnedDate: "",
+                paidByAgent: 0,
+            };
+            allTickets.push(tkt);
+        }
+    }
+
+    for (const ticket of allTickets) {
+      console.log(ticket);
+      await create(ticket);
+    }
+    return allTickets;
 }
