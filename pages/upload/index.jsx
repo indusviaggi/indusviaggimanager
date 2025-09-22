@@ -105,13 +105,16 @@ function Index() {
       default:
         uploadPromise = ticketsService.upload(content);
     }
-    return uploadPromise
-      .then(() => {
-        alertService.success("File(s) uploaded successfully", true);
-        setFiles([]);
-        setContent([]);
+    return uploadPromise.then((result) => {
+        if (result && result.length > 0) {
+          alertService.success("File(s) uploaded successfully", true);
+          setFiles([]);
+          setContent([]);
+        } else {
+          alertService.error("No tickets were created. The file might be empty, in the wrong format, or this uploader isn't implemented yet.");
+        }
       })
-      .catch(alertService.error);
+      .catch(error => alertService.error(error.message || error));
   }
 
   return (

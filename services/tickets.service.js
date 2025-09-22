@@ -616,6 +616,7 @@ async function upload(files) {
       }
     }
   });
+  return fc;
 }
 
 async function uploadAirArabia(files) {
@@ -761,6 +762,7 @@ async function uploadAirArabia(files) {
       createdTickets.push(ticket.ticketNumber);
     }
   }
+  return allTickets;
 }
 
 async function uploadWizzAir(files) {
@@ -863,8 +865,10 @@ async function uploadWizzAir(files) {
     console.log(ticket);
     await create(ticket);
   }
+  return allTickets;
 }
 
 async function uploadFlixbus(files) {
   // TODO: Implement Flixbus file parsing logic
+  return [];
 }
