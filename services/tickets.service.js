@@ -768,7 +768,7 @@ async function uploadAirArabia(files) {
     // Ensure we don't process the same ticket number twice in the same batch
     if (ticket?.ticketNumber && !createdTickets.includes(ticket.ticketNumber)) {
       console.log(ticket);
-      //await create(ticket);
+      await create(ticket);
       createdTickets.push(ticket.ticketNumber);
     }
   }
@@ -871,7 +871,7 @@ async function uploadWizzAir(files) {
   }
   for (const ticket of allTickets) {
     console.log(ticket);
-    //await create(ticket);
+    await create(ticket);
   }
   return allTickets;
 }
@@ -976,7 +976,7 @@ async function uploadFlixbus(files) {
 
     for (const ticket of allTickets) {
       console.log(ticket);
-      //await create(ticket);
+      await create(ticket);
     }
     return allTickets;
 }
