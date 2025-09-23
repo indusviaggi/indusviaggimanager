@@ -711,7 +711,6 @@ async function uploadAirArabia(files) {
             // Reconstruct the name as it appears in the payment section for searching.
             let searchName = `${passengerTitle} ${cleanedName}`;
             searchName = searchName.replace('Child. ', '');
-            console.log(searchName);
             if (paymentSectionMatch) {
                 const paymentRegex = new RegExp(`${searchName.replace('.', '\\.')}[\\s\\S]*?CARD PAYMENT - (\\w+)\\s+(\\d+)[\\s\\S]*?(\\d+\\.\\d{2}) EUR`);
                 const paymentDetails = paymentSectionMatch[1].match(paymentRegex);
@@ -795,8 +794,8 @@ async function uploadWizzAir(files) {
     const bookingCodeMatch = fileContent.match(/(?:Codice di conferma volo|Flight confirmation code|Confirmation code):\s*(\w+)/);
     const bookingCode = bookingCodeMatch ? bookingCodeMatch[1] : '';
 
-    const paymentDateMatch = fileContent.match(/(?:Data di pagamento|Payment date)\s+(\d{2}\/\d{2}\/\d{4})/);
-    const bookedOn = paymentDateMatch ? formatDate(paymentDateMatch[1], "IT") : formatDate(new Date());
+    const bookingDateMatch = fileContent.match(/(?:Data di prenotazione|Booking date):\s*(\d{2}\/\d{2}\/\d{4})/);
+    const bookedOn = bookingDateMatch ? formatDate(bookingDateMatch[1]) : formatDate(new Date());
 
     const flightNumMatch = fileContent.match(/(?:Numero di volo|Flight Number):\s*([^\r\n]+)/);
     const flight = flightNumMatch ? flightNumMatch[1].trim() : 'Wizz Air';
@@ -818,20 +817,18 @@ async function uploadWizzAir(files) {
 
     if (passengerSectionMatch) {
       // Extract all individual fare prices
-      const farePriceMatches = paymentSectionMatch ? [...paymentSectionMatch[1].matchAll(/(?:Tariffa|Fare price)\s+([\d.]+)\s+EUR/g)] : [];
+      const grandTotalMatch = paymentSectionMatch ? paymentSectionMatch[1].match(/(?:Totale complessivo|Grand total)[\s\S]*?([\d.]+)\s+EUR/) : null;
+      const paidAmount = grandTotalMatch ? parseFloat(grandTotalMatch[1]) : 0;
 
-      const passengerRows = passengerSectionMatch[1].matchAll(/(MS|MR|MRS|CHD)\s+([\w\s]+?)\s+([\w\s]+?)\s+([A-Z]{3}-[A-Z]{3})/g);
+      const passengerRows = passengerSectionMatch[1].matchAll(/^(?:(MS|MR|MRS|CHD)\s+)?([A-Z\s]+)\t([A-Z\s]+?)\s+[A-Z]{3}-[A-Z]{3}/gm);
 
       let passengerIndex = 0;
       for (const passengerMatch of passengerRows) {
-        const title = passengerMatch[1];
-        const firstName = passengerMatch[2];
-        const lastName = passengerMatch[3];
-        const passengerName = `${title} ${firstName} ${lastName}`;
+        const firstName = passengerMatch[2].trim();
+        const lastName = passengerMatch[3].trim();
+        // Format as "surname/name"
+        const passengerName = `${lastName}/${firstName}`;
 
-        // Assign fare price based on passenger order
-        const paidAmount = farePriceMatches[passengerIndex] ? parseFloat(farePriceMatches[passengerIndex][1]) : 0;
-        
         const tkt = {
           name: passengerName,
           bookingCode: bookingCode,
@@ -874,7 +871,7 @@ async function uploadWizzAir(files) {
   }
   for (const ticket of allTickets) {
     console.log(ticket);
-    await create(ticket);
+    //await create(ticket);
   }
   return allTickets;
 }
@@ -907,18 +904,15 @@ async function uploadFlixbus(files) {
         const arrivalMatch = fileContent.match(/Arrivo\s+Stazione\s+([\w\s()-]+)\s+Orario/);
         const travel2 = arrivalMatch ? arrivalMatch[1].trim() : '';
 
+        const bookedOn = formatDate(new Date());
         const dateMatch = fileContent.match(/\w{3}\s(\d{2})\s(\w{3})→/);
-        let bookedOn = formatDate(new Date());
         let dates = '';
         if (dateMatch) {
             const day = dateMatch[1];
             const month = monthMap[dateMatch[2].toLowerCase()];
-            // The year is not in the file, so we assume the current year.
-            // This might need adjustment if tickets are for next year.
             const year = new Date().getFullYear();
             if (day && month && year) {
                 dates = `${day}/${month}/${year}`;
-                bookedOn = `${year}-${month}-${day}`;
             }
         }
 
@@ -934,9 +928,15 @@ async function uploadFlixbus(files) {
         // In this format, the price is not available. Defaulting to 0.
         const paidAmount = 0;
 
-        for (const name of passengerNames) {
+        if (passengerNames.length > 0) {
+            const firstPassengerName = passengerNames[0];
+            const nameParts = firstPassengerName.trim().split(' ').filter(part => part);
+            const surname = nameParts.pop() || ''; // Last element is the surname
+            const firstName = nameParts.join(' '); // The rest is the first name
+            const formattedName = `${surname}/${firstName}`;
+
             const tkt = {
-                name: name,
+                name: formattedName,
                 bookingCode: bookingCode,
                 agent: '',
                 agentId: agency || admin || "123456789012345678901234", // Default to agency or admin
@@ -971,12 +971,12 @@ async function uploadFlixbus(files) {
                 paidByAgent: 0,
             };
             allTickets.push(tkt);
-        }
+        } // End of check for passenger names
     }
 
     for (const ticket of allTickets) {
       console.log(ticket);
-      await create(ticket);
+      //await create(ticket);
     }
     return allTickets;
 }
