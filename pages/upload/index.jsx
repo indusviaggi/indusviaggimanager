@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { Button, Radio, RadioGroup, FormControlLabel, FormControl, FormLabel } from "@mui/material";
+import { Button, Radio, RadioGroup, FormControlLabel, FormControl, FormLabel, TextField, Box } from "@mui/material";
 import { Spinner } from "components";
 import { Layout } from "components/users";
 import { alertService, ticketsService } from "services";
@@ -11,6 +11,7 @@ function Index() {
   const [files, setFiles] = useState(null);
   const [content, setContent] = useState([]);
   const [uploadType, setUploadType] = useState('amadeus');
+  const [textContent, setTextContent] = useState('');
 
   const months = [
     "JAN",
@@ -25,9 +26,6 @@ function Index() {
     "OCT",
     "NOV",
     "DEC",
-    "ARAB",
-    "WIZZ",
-    "FLIX"
   ];
 
   function readInput(e) {
@@ -90,25 +88,31 @@ function Index() {
   }
 
   function onSubmit() {
-    let uploadPromise;
+    let uploadPromise;    
+    const contentToUpload = uploadType === 'amadeus' ? content : (textContent ? [textContent] : content);
+    if (contentToUpload.length === 0) {
+        alertService.error("Please upload a file or enter text content.");
+        return;
+    }
     switch (uploadType) {
       case 'airarabia':
-        uploadPromise = ticketsService.uploadAirArabia(content);
+        uploadPromise = ticketsService.uploadAirArabia(contentToUpload);
         break;
       case 'wizzair':
-        uploadPromise = ticketsService.uploadWizzAir(content);
+        uploadPromise = ticketsService.uploadWizzAir(contentToUpload);
         break;
       case 'flixbus':
-        uploadPromise = ticketsService.uploadFlixbus(content);
+        uploadPromise = ticketsService.uploadFlixbus(contentToUpload);
         break;
       case 'amadeus':
       default:
-        uploadPromise = ticketsService.upload(content);
+        uploadPromise = ticketsService.upload(contentToUpload);
     }
     return uploadPromise.then((result) => {
         if (result && result.length > 0) {
           alertService.success("File(s) uploaded successfully", true);
           setFiles([]);
+          setTextContent('');
           setContent([]);
         } else {
           alertService.error("No tickets were created. The file might be empty, in the wrong format, or this uploader isn't implemented yet.");
@@ -135,47 +139,63 @@ function Index() {
             <FormControlLabel value="flixbus" control={<Radio />} label="Flixbus" />
           </RadioGroup>
         </FormControl>
-        <div id="FileUpload">
-          <div className="wrapper">
-            <div className="image-upload-wrap">
-              <input
-                id="filesInput"
-                className="file-upload-input"
-                type="file"
-                name="files[]"
-                accept=".M*"
-                multiple
-                onChange={(event) => {
-                  readInput(event);
-                }}
-              />
-              <div className="drag-text">
-                <h3>Drag and drop files or click to upload</h3>
-              </div>
-            </div>
-          </div>
-          {files &&
-            files.length > 0 &&
-            Object.keys(files).map((f, i) => (
-              <div key={i} className="uploaded">
-                <div className="file">
-                  <div className="file__name">
-                    <i className="fa fa-file delete"></i>
-                    <p>{getFileName(files[i])}</p>
-                    <i
-                      className="fas fa-times delete"
-                      onClick={() => deleteItem(i)}
-                    ></i>
-                  </div>
+        {uploadType === 'amadeus' && (
+          <div id="FileUpload">
+            <div className="wrapper">
+              <div className="image-upload-wrap">
+                <input
+                  id="filesInput"
+                  className="file-upload-input"
+                  type="file"
+                  name="files[]"
+                  accept=".M*"
+                  multiple
+                  onChange={(event) => {
+                    readInput(event);
+                  }}
+                />
+                <div className="drag-text">
+                  <h3>Drag and drop files or click to upload</h3>
                 </div>
               </div>
-            ))}
-        </div>
+            </div>
+            {files &&
+              files.length > 0 &&
+              Object.keys(files).map((f, i) => (
+                <div key={i} className="uploaded">
+                  <div className="file">
+                    <div className="file__name">
+                      <i className="fa fa-file delete"></i>
+                      <p>{getFileName(files[i])}</p>
+                      <i
+                        className="fas fa-times delete"
+                        onClick={() => deleteItem(i)}
+                      ></i>
+                    </div>
+                  </div>
+                </div>
+              ))}
+          </div>
+        )}
+        {uploadType !== 'amadeus' && (
+            <Box sx={{ mt: 2 }}>
+                <TextField
+                    label="Paste Content Here"
+                    multiline
+                    rows={15}
+                    fullWidth
+                    variant="outlined"
+                    value={textContent}
+                    onChange={(e) => setTextContent(e.target.value)}
+                />
+            </Box>
+        )}
+        <br></br>
       </form>
       <div id="filenames"></div>
       <Button
-            variant="contained"
-            disabled={!files || files.length <= 0}
+            variant="contained"            
+            disabled={!(files && files.length > 0) && !textContent}
             color="primary"
             fullWidth
             onClick={onSubmit}
