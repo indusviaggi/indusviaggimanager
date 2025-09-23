@@ -686,28 +686,39 @@ async function uploadAirArabia(files) {
 
     // --- Extract E-Ticket and Payment Details for each passenger ---
     const eTicketSectionMatch = fileContent.match(/E TICKET DETAILS([\s\S]*?)ANCILLARY DETAILS/);
-    const paymentSectionMatch = fileContent.match(/PAYMENT DETAILS([\s\S]*?)\* All times in local/);
+    const paymentSectionMatch = fileContent.match(/PAYMENT DETAILS([\s\S]*?)\*/);
 
     if (eTicketSectionMatch) {
         const ticketRows = eTicketSectionMatch[1].matchAll(/(MR|MRS|MISS|Child\.)\s+([\w\s]+?)\s+\w{3}\/\w{3}\s+\w+\s+([\d\/]+)/g);
 
         for (const ticketMatch of ticketRows) {
             const passengerTitle = ticketMatch[1].trim();
-            const passengerName = `${passengerTitle} ${ticketMatch[2].trim()}`;
-            const ticketNumber = ticketMatch[3].split('/')[0];
+            // ticketMatch[2] contains the name without the title.
+            const cleanedName = ticketMatch[2].trim().replace(/\s+/g, ' '); // Normalize spaces
+            const nameParts = cleanedName.split(' ').filter(part => part); // Split by space and remove empty parts
+            const surname = nameParts.pop() || ''; // Last element is the surname
+            const firstName = nameParts.join(' '); // The rest is the first name
+            const passengerName = `${surname}/${firstName}`;
+            let ticketNumber = ticketMatch[3].split('/')[0];
+            //if (ticketNumber.length === 13) {
+            ticketNumber = ticketNumber.slice(0, 3) + "-" + ticketNumber.slice(3);
+            //}
 
             // Find corresponding payment
             let paidAmount = 0;
             let paymentMethod = '';
-            // For child tickets, the payment details might not include "Child."
-            const searchName = passengerName.replace('Child. ', '');
-
+            let cardNumber = '';
+            // Reconstruct the name as it appears in the payment section for searching.
+            let searchName = `${passengerTitle} ${cleanedName}`;
+            searchName = searchName.replace('Child. ', '');
+            console.log(searchName);
             if (paymentSectionMatch) {
-                const paymentRegex = new RegExp(`${searchName.replace('.', '\\.')}[\\s\\S]*?CARD PAYMENT - (\\w+)[\\s\\S]*?(\\d+\\.\\d{2}) EUR`);
+                const paymentRegex = new RegExp(`${searchName.replace('.', '\\.')}[\\s\\S]*?CARD PAYMENT - (\\w+)\\s+(\\d+)[\\s\\S]*?(\\d+\\.\\d{2}) EUR`);
                 const paymentDetails = paymentSectionMatch[1].match(paymentRegex);
                 if (paymentDetails) {
-                    paymentMethod = paymentDetails[1];
-                    paidAmount = parseFloat(paymentDetails[2]);
+                    paymentMethod = paymentDetails[1]; // e.g., MASTER
+                    cardNumber = paymentDetails[2]; // e.g., 7915
+                    paidAmount = parseFloat(paymentDetails[3]); // e.g., 214.46
                 }
             }
 
@@ -732,7 +743,7 @@ async function uploadAirArabia(files) {
                 receivingAmount3Method: "",
                 receivingAmount2: 0,
                 receivingAmount3: 0,
-                cardNumber: '', // Not available in this format
+                cardNumber: cardNumber,
                 isVoid: false,
                 bookedOn: bookedOn,
                 travel1: travel1,
@@ -758,7 +769,7 @@ async function uploadAirArabia(files) {
     // Ensure we don't process the same ticket number twice in the same batch
     if (ticket?.ticketNumber && !createdTickets.includes(ticket.ticketNumber)) {
       console.log(ticket);
-      await create(ticket);
+      //await create(ticket);
       createdTickets.push(ticket.ticketNumber);
     }
   }
