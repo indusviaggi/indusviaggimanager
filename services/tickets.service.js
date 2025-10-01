@@ -134,7 +134,7 @@ async function getAll(filters, flights = []) {
 }
 
 async function create(ticket) {
-  await fetchWrapper.post(`${baseUrl}/create`, ticket);
+  return await fetchWrapper.post(`${baseUrl}/create`, ticket);
 }
 
 async function update(id, params) {
@@ -590,32 +590,6 @@ async function upload(files) {
       fc.push(tkt);
     });
   });
-  let created = [];
-  fc.map((f) => {
-    if (f?.ticketNumber && f?.isVoid) {
-      let params = {
-        ticketNumber: f?.ticketNumber,
-        agentCost: 0,
-        paidAmount: 0,
-        receivingAmount1: 0,
-        receivingAmount2: 0,
-        receivingAmount3: 0,
-        refund: "",
-        supplied: 0,
-        returned: 0,
-        paidByAgent: 0,
-        isVoid: "true",
-      };
-      //console.log(f);
-      findAndUpdate(params);
-    } else {
-      if (f?.ticketNumber && !created.includes(f.ticketNumber)) {
-        console.log(f);
-        create(f);
-        created.push(f.ticketNumber);
-      }
-    }
-  });
   return fc;
 }
 
@@ -763,15 +737,6 @@ async function uploadAirArabia(files) {
     }
   }
 
-  const createdTickets = [];
-  for (const ticket of allTickets) {
-    // Ensure we don't process the same ticket number twice in the same batch
-    if (ticket?.ticketNumber && !createdTickets.includes(ticket.ticketNumber)) {
-      console.log(ticket);
-      create(ticket);
-      createdTickets.push(ticket.ticketNumber);
-    }
-  }
   return allTickets;
 }
 
@@ -868,10 +833,6 @@ async function uploadWizzAir(files) {
         passengerIndex++;
       }
     }
-  }
-  for (const ticket of allTickets) {
-    console.log(ticket);
-    create(ticket);
   }
   return allTickets;
 }
@@ -974,9 +935,5 @@ async function uploadFlixbus(files) {
         } // End of check for passenger names
     }
 
-    for (const ticket of allTickets) {
-      console.log(ticket);
-      create(ticket);
-    }
     return allTickets;
 }
