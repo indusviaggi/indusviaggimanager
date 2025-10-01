@@ -269,8 +269,8 @@ function Index() {
           <Box sx={{ flexGrow: 1, maxHeight: '60vh', overflowY: 'auto', pr: 1 }}>
             {processedTickets.length > 0 ? (
               processedTickets.map((ticket, index) => (
-                <Box key={index} sx={{ border: '1px solid #ccc', p: 2, mb: 2, borderRadius: 1, background: '#f9f9f9' }}>
-                  <h4>Ticket {index + 1}: {ticket.name}</h4>
+                <Box key={index} sx={{ border: '1px solid #ccc', p: 1.5, mb: 1.5, borderRadius: 1, background: '#f9f9f9' }}>
+                  <h5>Ticket {index + 1}: {ticket.name}</h5>
                   {Object.entries(ticket).map(([key, value]) => {
                     const isNumericField = [
                       'agentCost', 'paidAmount', 'receivingAmount1', 'receivingAmount2',
@@ -278,8 +278,8 @@ function Index() {
                     ].includes(key);
 
                     return (
-                      <Box key={key} sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
-                        <FormLabel sx={{ minWidth: '150px', textTransform: 'capitalize', mr: 2, fontSize: '0.9rem' }}>
+                      <Box key={key} sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                        <FormLabel sx={{ minWidth: '120px', textTransform: 'capitalize', mr: 1, fontSize: '0.8rem' }}>
                           {key.replace(/([A-Z])/g, ' $1').trim()}:
                         </FormLabel>
                         <TextField
@@ -288,6 +288,12 @@ function Index() {
                           fullWidth
                           type={isNumericField ? 'number' : 'text'}
                           value={value}
+                          sx={{
+                            '& .MuiInputBase-input': {
+                              fontSize: '0.8rem',
+                              padding: '6px 8px',
+                            },
+                          }}
                           onChange={(e) => handleTicketChange(index, key, e.target.value)}
                           onBlur={(e) => {
                             if (isNumericField && e.target.value) {

@@ -624,7 +624,8 @@ async function uploadAirArabia(files) {
     const airlineName = airlineLegendMatch ? airlineLegendMatch[1].trim() : '';
 
     const contactDetailsMatch = fileContent.match(/PASSENGER CONTACT DETAILS\s*([\s\S]*?)\s*AGENT DETAILS/);
-    const phone = contactDetailsMatch ? (contactDetailsMatch[1].match(/(\d{2}-\d{3,}-\d{6,})/) || [])[0] : '';
+    const phoneMatch = contactDetailsMatch ? contactDetailsMatch[1].match(/(\d{2}-\d{3,}-\d{6,})/) : null;
+    const phone = phoneMatch ? phoneMatch[0].replace(/-/g, '') : '';
 
     // --- Extract Travel Segments ---
     const travelSegmentsMatch = fileContent.match(/TRAVEL SEGMENTS([\s\S]*?)LOCAL CALL CENTER/);
