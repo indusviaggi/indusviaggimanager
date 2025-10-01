@@ -153,20 +153,38 @@ function Index() {
   }
 
   const handleTicketChange = (ticketIndex, fieldKey, newValue) => {
+    const numericFields = [
+      'agentCost',
+      'paidAmount',
+      'receivingAmount1',
+      'receivingAmount2',
+      'receivingAmount3',
+      'refund',
+      'supplied',
+      'returned',
+      'paidByAgent'
+    ];
+
+    if (numericFields.includes(fieldKey)) {
+      // Allow only numbers and a single dot, and format to two decimal places on the fly
+      const sanitizedValue = newValue.replace(/[^0-9.]/g, '').replace(/(\..*?)\..*/g, '$1');
+      newValue = sanitizedValue;
+    }
+
     setProcessedTickets(currentTickets => {
-        const newTickets = JSON.parse(JSON.stringify(currentTickets)); // Deep copy to be safe
-        const ticketToUpdate = newTickets[ticketIndex];
-        ticketToUpdate[fieldKey] = newValue;
-        return newTickets;
+      const newTickets = JSON.parse(JSON.stringify(currentTickets)); // Deep copy to be safe
+      const ticketToUpdate = newTickets[ticketIndex];
+      ticketToUpdate[fieldKey] = newValue;
+      return newTickets;
     });
   };
-
 
   return (
     <Layout>
       <Box sx={{ display: 'flex', gap: 4 }}>
         {/* Left Column: Upload Area */}
         <Box sx={{ flex: 1, border: '1px dashed grey', p: 2, borderRadius: 1 }}>
+          <h3 style={{ marginTop: 0 }}>Upload Content</h3>
           <form id="uploadFile" method="POST" encType="multipart/form-data">
             <FormControl component="fieldset" sx={{ mb: 2 }}>
               <RadioGroup
@@ -247,26 +265,42 @@ function Index() {
 
         {/* Right Column: Preview and Create Area */}
         <Box sx={{ flex: 1, border: '1px dashed grey', p: 2, borderRadius: 1, minHeight: '400px', display: 'flex', flexDirection: 'column' }}>
+          <h3 style={{ marginTop: 0 }}>Preview Tickets</h3>
           <Box sx={{ flexGrow: 1, maxHeight: '60vh', overflowY: 'auto', pr: 1 }}>
             {processedTickets.length > 0 ? (
               processedTickets.map((ticket, index) => (
                 <Box key={index} sx={{ border: '1px solid #ccc', p: 2, mb: 2, borderRadius: 1, background: '#f9f9f9' }}>
-                  <h5>Ticket {index + 1}: {ticket.name}</h5>
-                  {Object.entries(ticket).map(([key, value]) => (
-                    <Box key={key} sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
-                      <FormLabel sx={{ minWidth: '150px', textTransform: 'capitalize', mr: 2, fontSize: '0.9rem' }}>
-                        {key.replace(/([A-Z])/g, ' $1').trim()}:
-                      </FormLabel>
-                      <TextField
-                        variant="outlined"
-                        size="small"
-                        fullWidth
-                        value={value}
-                        onChange={(e) => handleTicketChange(index, key, e.target.value)}
-                        disabled={['isVoid', 'agent', 'agentId', 'iata', 'office'].includes(key)} // Example of a non-editable field
-                      />
-                    </Box>
-                  ))}
+                  <h4>Ticket {index + 1}: {ticket.name}</h4>
+                  {Object.entries(ticket).map(([key, value]) => {
+                    const isNumericField = [
+                      'agentCost', 'paidAmount', 'receivingAmount1', 'receivingAmount2',
+                      'receivingAmount3', 'refund', 'supplied', 'returned', 'paidByAgent'
+                    ].includes(key);
+
+                    return (
+                      <Box key={key} sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
+                        <FormLabel sx={{ minWidth: '150px', textTransform: 'capitalize', mr: 2, fontSize: '0.9rem' }}>
+                          {key.replace(/([A-Z])/g, ' $1').trim()}:
+                        </FormLabel>
+                        <TextField
+                          variant="outlined"
+                          size="small"
+                          fullWidth
+                          type={isNumericField ? 'number' : 'text'}
+                          value={value}
+                          onChange={(e) => handleTicketChange(index, key, e.target.value)}
+                          onBlur={(e) => {
+                            if (isNumericField && e.target.value) {
+                              const formattedValue = parseFloat(e.target.value).toFixed(2);
+                              handleTicketChange(index, key, formattedValue);
+                            }
+                          }}
+                          disabled={['isVoid', 'agent', 'agentId', 'iata', 'office'].includes(key)}
+                          inputProps={isNumericField ? { step: "0.01" } : {}}
+                        />
+                      </Box>
+                    );
+                  })}
                 </Box>
               ))
             ) : (
