@@ -724,7 +724,7 @@ async function uploadAirArabia(files) {
                 travel2: travel2,
                 dates: dates,
                 phone: phone,
-                flight: flight,
+                flight: 'AIR ARABIA MAROC',
                 refund: "",
                 refundDate: "",
                 desc: "",
@@ -762,9 +762,6 @@ async function uploadWizzAir(files) {
 
     const bookingDateMatch = fileContent.match(/(?:Data di prenotazione|Booking date):\s*(\d{2}\/\d{2}\/\d{4})/);
     const bookedOn = bookingDateMatch ? formatDate(bookingDateMatch[1]) : formatDate(new Date());
-
-    const flightNumMatch = fileContent.match(/(?:Numero di volo|Flight Number):\s*([^\r\n]+)/);
-    const flight = flightNumMatch ? flightNumMatch[1].trim() : 'Wizz Air';
 
     const travelMatch = fileContent.match(/(?:Partenza da|Departs from):\s*(?:Arrivo a|Arrives to):\s*\r?\n\s*([\w\s()-]+?)\s+([\w\s()-]+)/);
     const travel1 = travelMatch ? travelMatch[1].trim() : '';
@@ -821,7 +818,7 @@ async function uploadWizzAir(files) {
           travel2: travel2,
           dates: dates,
           phone: '',
-          flight: flight,
+          flight: 'WIZZAIR',
           refund: "",
           refundDate: "",
           desc: "",
@@ -923,7 +920,7 @@ async function uploadFlixbus(files) {
                 travel2: travel2,
                 dates: dates,
                 phone: '',
-                flight: 'FlixBus',
+                flight: 'FLIXBUS',
                 refund: "",
                 refundDate: "",
                 desc: "",
