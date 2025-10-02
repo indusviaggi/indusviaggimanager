@@ -8,7 +8,7 @@ MONGO_URI=$1
 ACTION=$2
 
 if [ -z "$MONGO_URI" ]; then
-  echo "Usage: $0 <mongodb-uri> [1|2|3]"
+  echo "Usage: $0 <mongodb-uri> [im|ex|an]"
   exit 1
 fi
 
@@ -25,17 +25,17 @@ run_export() {
 }
 
 case "$ACTION" in
-  1)
+  im)
     if [[ "$MONGO_URI" == *"y2d"* ]]; then
       echo "The provided URI appears to be a staging database. Aborting import operation for safety."
       exit 1
     fi
     run_import
     ;;
-  2)
+  ex)
     run_export
     ;;
-  3)
+  an)
     if [[ "$MONGO_URI" == *"y2d"* ]]; then
       echo "The provided URI appears to be a staging database. Aborting anonymize operation for safety."
       exit 1
@@ -43,7 +43,7 @@ case "$ACTION" in
     run_anonymize
     ;;
   *)
-    echo "Invalid action: '$ACTION'. Please use '1' to import, '2' to export, or '3' to anonymize."
+    echo "Invalid action: '$ACTION'. Please use 'im' to import, 'ex' to export, or 'an' to anonymize."
     exit 1
     ;;
 esac
