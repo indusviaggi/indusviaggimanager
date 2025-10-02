@@ -11,11 +11,14 @@ if (!mongoUri) {
 const BACKUP_DIR = path.join(process.cwd(), 'managerBackups');
 
 async function importBackups() {
+  console.log('Starting Database Import...');
+  console.log(`Connecting to database...`);
   const files = fs.readdirSync(BACKUP_DIR).filter(f => f.endsWith('.json'));
   const client = new MongoClient(mongoUri);
   try {
     await client.connect();
     const db = client.db(); // Uses db name from URI
+    console.log('Database connected successfully.');
 
     for (const file of files) {
       const baseName = path.basename(file, '.json');

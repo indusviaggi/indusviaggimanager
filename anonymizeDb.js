@@ -207,7 +207,7 @@ async function run() {
 
   try {
     console.log(`Starting database anonymization...`);
-    console.log(`Connecting to: ${mongoUri}`);
+    console.log(`Connecting to database...`);
     await client.connect();
     const db = client.db(); // Get DB instance from the connection URI
     console.log('Database connected successfully.');
