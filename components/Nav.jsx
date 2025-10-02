@@ -27,7 +27,6 @@ import RefundIcon from '@mui/icons-material/RequestQuote';
 import SupervisorAccountIcon from '@mui/icons-material/SupervisorAccount';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import LogoutIcon from '@mui/icons-material/Logout';
-
 const drawerWidth = 240;
 
 export function Nav() {
@@ -116,6 +115,9 @@ export function Nav() {
           <ListItemText primary="Logout" />
         </ListItemButton>
       </List>
+      <Typography variant="caption" sx={{ position: 'absolute', bottom: 8, right: 8, color: 'text.secondary' }}>
+        v{config?.publicRuntimeConfig?.version || '1.0.0' }
+      </Typography>
     </Box>
   );
 
