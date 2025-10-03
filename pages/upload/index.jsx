@@ -305,7 +305,7 @@ function Index() {
                                         handleTicketChange(index, key, formattedValue);
                                       }
                                     }}
-                                    disabled={['isVoid', 'agent', 'agentId', 'iata', 'office'].includes(key)}
+                                    disabled={['isVoid', 'agent', 'agentId', 'iata', 'office', 'flight'].includes(key)}
                                     inputProps={isNumericField ? { step: "0.01" } : {}}
                                   />
                                 </Box>
