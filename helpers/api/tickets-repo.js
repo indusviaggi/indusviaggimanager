@@ -39,9 +39,15 @@ async function getTicketsByAgent(filters) {
     $and: [
       { bookedOn: { $gt: moment("20240101").format("YYYY-MM-DD") } },
       {
+        // Using $ifNull to provide a default value of 0 for agentCost and paidByAgent
+        // if they are null, missing, or cannot be converted to a double.
+        // This prevents the "Failed to parse number" error for empty strings.
         $expr: {
-          $gt: [{ $toDouble: "$agentCost" }, { $toDouble: "$paidByAgent" }],
-        },
+          $gt: [
+            { $ifNull: [{ $toDouble: "$agentCost" }, 0] },
+            { $ifNull: [{ $toDouble: "$paidByAgent" }, 0] }
+          ]
+        }
       },
     ],
   };
