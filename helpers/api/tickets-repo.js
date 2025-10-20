@@ -35,17 +35,17 @@ async function getFlights() {
 }
 
 async function getTicketsByAgent(filters) {
+  // Guard against empty-string or non-numeric values in agentCost/paidByAgent by
+  // converting with onError/onNull defaults to 0 before comparison.
+  // Note: Mongoose forwards this filter as an aggregation $expr inside a find.
   let filter = {
     $and: [
       { bookedOn: { $gt: moment("20240101").format("YYYY-MM-DD") } },
       {
-        // Using $ifNull to provide a default value of 0 for agentCost and paidByAgent
-        // if they are null, missing, or cannot be converted to a double.
-        // This prevents the "Failed to parse number" error for empty strings.
         $expr: {
           $gt: [
-            { $ifNull: [{ $toDouble: "$agentCost" }, 0] },
-            { $ifNull: [{ $toDouble: "$paidByAgent" }, 0] }
+            { $ifNull: [ { $convert: { input: "$agentCost", to: "double", onError: 0, onNull: 0 } }, 0 ] },
+            { $ifNull: [ { $convert: { input: "$paidByAgent", to: "double", onError: 0, onNull: 0 } }, 0 ] }
           ]
         }
       },
@@ -58,12 +58,7 @@ async function getTicketsForSupply(filters) {
   let filter = {
     ...filters,
     $and: [{ iata: { $eq: "SCA" } }],
-    $expr: {
-      $gt: [
-        { $ifNull: [{ $toDouble: "$paidAmount" }, 0] },
-        { $ifNull: [{ $toDouble: "$supplied" }, 0] },
-      ],
-    },
+    $expr: { $gt: [{ $toDouble: "$paidAmount" }, { $toDouble: "$supplied" }] },
   };
   return await Tickets.find(filter).sort({ bookedOn: -1 });
 }
@@ -76,12 +71,7 @@ async function getRefundsForSupply(filters) {
       { refund: { $ne: "" } },
       { iata: { $eq: "SCA" } },
     ],
-    $expr: {
-      $gt: [
-        { $ifNull: [{ $toDouble: "$refund" }, 0] },
-        { $ifNull: [{ $toDouble: "$refundUsed" }, 0] },
-      ],
-    },
+    $expr: { $gt: [{ $toDouble: "$refund" }, { $toDouble: "$refundUsed" }] },
   };
   return await Tickets.find(filter).sort({ bookedOn: -1 });
 }
