@@ -58,7 +58,12 @@ async function getTicketsForSupply(filters) {
   let filter = {
     ...filters,
     $and: [{ iata: { $eq: "SCA" } }],
-    $expr: { $gt: [{ $toDouble: "$paidAmount" }, { $toDouble: "$supplied" }] },
+    $expr: {
+      $gt: [
+        { $ifNull: [{ $toDouble: "$paidAmount" }, 0] },
+        { $ifNull: [{ $toDouble: "$supplied" }, 0] },
+      ],
+    },
   };
   return await Tickets.find(filter).sort({ bookedOn: -1 });
 }
@@ -71,7 +76,12 @@ async function getRefundsForSupply(filters) {
       { refund: { $ne: "" } },
       { iata: { $eq: "SCA" } },
     ],
-    $expr: { $gt: [{ $toDouble: "$refund" }, { $toDouble: "$refundUsed" }] },
+    $expr: {
+      $gt: [
+        { $ifNull: [{ $toDouble: "$refund" }, 0] },
+        { $ifNull: [{ $toDouble: "$refundUsed" }, 0] },
+      ],
+    },
   };
   return await Tickets.find(filter).sort({ bookedOn: -1 });
 }
