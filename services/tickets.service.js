@@ -116,7 +116,7 @@ async function getAll(filters, flights = []) {
       idP: i + 1,
       receivingAmountT: "€ " + tra.toFixed(2),
       paidAmount: "€ " + t.paidAmount,
-      daSaldare: daSaldare.toFixed(2),
+      daSaldare: daSaldare,
       agent,
       agentCost: t.agentCost && agent ? "€ " + t.agentCost : "",
       methods: methods,
