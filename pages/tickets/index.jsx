@@ -38,6 +38,7 @@ function Index() {
   const [exportOpen, setExportOpen] = useState(false);
   const [availableFields, setAvailableFields] = useState([]);
   const [selectedFields, setSelectedFields] = useState([]);
+  const [selectedIds, setSelectedIds] = useState([]);
 
   useEffect(() => {
     getTickets();
@@ -171,8 +172,13 @@ function Index() {
     setDeleteTicketDialog(true);
   };
 
-const downloadTicket = (ticket) => {
-    const doc = new jsPDF();
+  const toggleSelectTicket = (id) => {
+    setSelectedIds(prev =>
+      prev.includes(id) ? prev.filter(tid => tid !== id) : [...prev, id]
+    );
+  };
+
+  const drawTicketReceipt = (doc, ticket) => {
     const imgData = "logo.png";
     const imgData1 = "iata2.jpg";
     const primaryColor = [0, 105, 127];
@@ -305,7 +311,7 @@ const downloadTicket = (ticket) => {
 
     // 7. Company Footer
     doc.setFontSize(8);
-    doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    //doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
     doc.setFont("helvetica", "bold");
     
     const footerLine1 = "Via Don Giovanni Alai, 6/A 42121 - Reggio Emilia";
@@ -315,10 +321,25 @@ const downloadTicket = (ticket) => {
     doc.text(footerLine1, 105, 280, null, null, "center");
     doc.text(footerLine2, 105, 285, null, null, "center");
     doc.text(footerLine3, 105, 290, null, null, "center");
+  };
 
+  const downloadTicket = (ticket) => {
+    const doc = new jsPDF();
+    drawTicketReceipt(doc, ticket);
     doc.save(`${ticket.name.replace(/\W/g, "_")}_Ticket_${ticket.id}.pdf`);
   };
 
+  const downloadSelectedTickets = () => {
+    const selectedData = apiTickets.filter(t => selectedIds.includes(t.id));
+    if (selectedData.length === 0) return;
+
+    const doc = new jsPDF();
+    selectedData.forEach((t, index) => {
+      if (index > 0) doc.addPage();
+      drawTicketReceipt(doc, t);
+    });
+    doc.save(`Selected_Tickets_Receipts_${moment().format('YYYYMMDD_HHmm')}.pdf`);
+  };
 
 
   const hideDeleteTicketDialog = () => {
@@ -629,6 +650,13 @@ const downloadTicket = (ticket) => {
           <Typography variant="body2">Agent Cost: {totals[3]}</Typography>
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          {selectedIds.length > 0 && (
+            <Tooltip title="Download Selected Individual Receipts">
+              <Button variant="contained" color="error" size="small" onClick={downloadSelectedTickets} startIcon={<PictureAsPdfIcon />}>
+                Export ({selectedIds.length})
+              </Button>
+            </Tooltip>
+          )}
           <FormControl size="small" sx={{ minWidth: 120 }}>
             <InputLabel>Sort By</InputLabel>
             <Select
@@ -701,6 +729,7 @@ const downloadTicket = (ticket) => {
           >
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', height: '100%', overflow: 'hidden' }}>
               <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
+                <Checkbox size="small" checked={selectedIds.includes(ticket.id)} onChange={() => toggleSelectTicket(ticket.id)} />
                 <Tooltip title={ticket.name}><Chip label={ticket.name.length > 25 ? ticket.name.slice(0, 25) + '…' : ticket.name} color="primary" variant="outlined" sx={{ width: 150, overflow: 'hidden', textOverflow: 'ellipsis' }} /></Tooltip>
                 <Tooltip title={ticket.bookingCode}><Chip label={ticket.bookingCode.length > 25 ? ticket.bookingCode.slice(0, 25) + '…' : ticket.bookingCode} color="secondary" variant="outlined" sx={{ width: 80, overflow: 'hidden', textOverflow: 'ellipsis' }} /></Tooltip>
                 <Typography sx={{ fontWeight: 500, width: 150, minWidth: 150, maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ticket.ticketNumber}</Typography>
