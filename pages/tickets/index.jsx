@@ -184,7 +184,7 @@ const downloadTicket = (ticket) => {
     // 2. Bolla Header (Left)
     doc.setFontSize(12);
     doc.setFont("helvetica", "bold");
-    doc.text(`Indus Viaggi - BOLLA del ${moment().date()}/${moment().month() + 1}/${moment().year()}`, 15, 60);
+    doc.text(`Ricevuta di pagamento del ${moment().date()}/${moment().month() + 1}/${moment().year()}`, 15, 60);
     doc.setFont("helvetica", "normal");
     
     doc.setFontSize(9);
@@ -230,9 +230,40 @@ const downloadTicket = (ticket) => {
 
     // Line 3: Itinerary details (Routes)
     doc.setFontSize(8);
+    doc.setFont("helvetica", "bold");
+    doc.text("Dettagli Viaggio:", 18, 135);    
+    doc.setFont("helvetica", "normal");
     doc.text(`Route 1 Info: ${ticket.travel1 || 'N/A'}`, 18, 140);
     if (ticket.travel2) {
       doc.text(`Route 2 Info: ${ticket.travel2}`, 18, 145);
+    }
+
+    // Add a small gap before payment details
+    let currentY = 160;
+
+    // Payment Details Section
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.text("Dettagli Pagamento:", 18, currentY);
+    currentY += 5;
+    doc.setFont("helvetica", "normal");
+
+    // Receiving Amount 1
+    if (ticket.receivingAmount1 && parseFloat(String(ticket.receivingAmount1).replace(/[^\d.-]/g, '')) > 0) {
+      doc.text(`Importo 1: ${ticket.receivingAmount1} del ${ticket.receivingAmount1Date} via ${ticket.paymentMethod || 'N/A'}`, 18, currentY);
+      currentY += 5;
+    }
+
+    // Receiving Amount 2
+    if (ticket.receivingAmount2 && parseFloat(String(ticket.receivingAmount2).replace(/[^\d.-]/g, '')) > 0) {
+      doc.text(`Importo 2: ${ticket.receivingAmount2} del ${ticket.receivingAmount2Date} via ${ticket.receivingAmount2Method || 'N/A'}`, 18, currentY);
+      currentY += 5;
+    }
+
+    // Receiving Amount 3
+    if (ticket.receivingAmount3 && parseFloat(String(ticket.receivingAmount3).replace(/[^\d.-]/g, '')) > 0) {
+      doc.text(`Importo 3: ${ticket.receivingAmount3} del ${ticket.receivingAmount3Date} via ${ticket.receivingAmount3Method || 'N/A'}`, 18, currentY);
+      currentY += 5;
     }
 
     // 6. Totals Grid & Signature
@@ -257,7 +288,7 @@ const downloadTicket = (ticket) => {
     doc.text(ticket.receivingAmountT || '0.00', 40, startTotalsY + 12, null, null, "right");
     doc.text('', 80, startTotalsY + 12, null, null, "right");
     doc.text(ticket.receivingAmountT || '0.00', 160, startTotalsY + 12, null, null, "right");
-    doc.text(ticket.daSaldare, 190, startTotalsY + 12, null, null, "right");
+    doc.text('0.00', 190, startTotalsY + 12, null, null, "right");
 
     // Net amount prominent line
     doc.line(15, startTotalsY + 15, 195, startTotalsY + 15);
@@ -281,7 +312,7 @@ const downloadTicket = (ticket) => {
     
     const footerLine1 = "Via Don Giovanni Alai, 6/A 42121 - Reggio Emilia";
     const footerLine2 = "Tel/fax: +39 0522434627 - Cell.: +39 3889220982, +39 3802126100";
-    const footerLine3 = "www.indusviaggi.com info@indusviaggi.com";
+    const footerLine3 = "P. IVA 02938870355 - www.indusviaggi.com - info@indusviaggi.com";
 
     doc.text(footerLine1, 105, 280, null, null, "center");
     doc.text(footerLine2, 105, 285, null, null, "center");

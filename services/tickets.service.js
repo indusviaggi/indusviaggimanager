@@ -90,7 +90,7 @@ async function getAll(filters, flights = []) {
         (parseFloat(t.receivingAmount3) || 0)
       : 0;
     let profit = parseFloat((tra - tk2).toFixed(2));
-    let daSaldare = '0.00';//parseFloat((tk2 - tra).toFixed(2));
+    let daSaldare = parseFloat((tk2 - tra).toFixed(2));
     let methods =
       t.paymentMethod +
       (t.receivingAmount2Method ? " - " + t.receivingAmount2Method : "") +
@@ -111,7 +111,7 @@ async function getAll(filters, flights = []) {
       profit: "€ " + profit,
       bookedOn: bkd,
       receivingAmount1Date: ra1d,
-      receivingAmount2Date: ra2d,
+      receivingAmount2Date: ra2d, // This is already formatted as IT date
       receivingAmount3Date: ra3d,
       idP: i + 1,
       receivingAmountT: "€ " + tra.toFixed(2),
@@ -131,6 +131,7 @@ async function getAll(filters, flights = []) {
       paidByAgent: t.paidByAgent ? "€ " + t.paidByAgent : t.paidByAgent,
       penality: penality !== "" ? "€ " + parseFloat(penality).toFixed(2) : "",
       amountsCompleted: amountsCompleted,
+      daSaldare: "€ " + daSaldare.toFixed(2), // Format daSaldare here
     };
   });
   return tickets;
