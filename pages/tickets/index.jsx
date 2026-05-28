@@ -17,6 +17,7 @@ import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import moment from "moment";
 export default Index;
 
 function Index() {
@@ -170,159 +171,126 @@ function Index() {
     setDeleteTicketDialog(true);
   };
 
-  const downloadTicket = (ticket) => {
-    const imgData = "logo.png";
+const downloadTicket = (ticket) => {
     const doc = new jsPDF();
-    let row = 10;
-    let width = 130;
-    let length = 35;
-    doc.addImage(imgData, "PNG", 10, 10, 40, 40);
+    const imgData = "logo.png";
+    const imgData1 = "iata2.jpg";
+    const primaryColor = [0, 105, 127];
 
-    doc.setFontSize(20);
-    row += 10;
-    doc.text("Indus Viaggi", 200, row, null, null, "right");
-    doc.setFontSize(10);
-    row += 10;
-    doc.text("Via Don Giovanni Alai, 6/A", 200, row, null, null, "right");
-    row += 5;
-    doc.text("42121 - Reggio Emilia", 200, row, null, null, "right");
-    row += 5;
-    doc.text("Tel/fax: +39 0522434627", 200, row, null, null, "right");
-    row += 5;
-    doc.text(
-      "Cell.: +39 3889220982, +39 3802126100",
-      200,
-      row,
-      null,
-      null,
-      "right"
-    );
-    row += 10;
-    doc.setDrawColor(120, 120, 120);
-    doc.line(10, row, 200, row);
-    doc.setFontSize(14);
-    row += 20;
+    // 1. Logo (Centered as per image)
+    doc.addImage(imgData, "PNG", 15, 5, 40, 40);
+    doc.addImage(imgData1, "PNG", 110, 20, 40, 10);
 
-    doc.text("Nome Passeggero", 10, row);
-    doc.text(":", 60, row);
-    doc.text(ticket.name, 65, row, { maxWidth: width }, null, "left");
-    ticket.name.length > length ? (row += 10) : (row += 4);
+    // 2. Bolla Header (Left)
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "bold");
+    doc.text(`Indus Viaggi - BOLLA del ${moment().date()}/${moment().month() + 1}/${moment().year()}`, 15, 60);
+    doc.setFont("helvetica", "normal");
+    
+    doc.setFontSize(9);
+    doc.text(`Operatore: Indus Viaggi`, 15, 67);
+    doc.text(`Codice Biglietto: ${ticket.ticketNumber}`, 15, 72);
 
-    doc.line(10, row, 200, row);
-    row += 7;
-    doc.text("Data Acquisto", 10, row);
-    doc.text(":", 60, row);
-    doc.text(ticket.bookedOn, 65, row, { maxWidth: width }, null, "left");
-    ticket.bookedOn.length > length ? (row += 10) : (row += 4);
-    doc.line(10, row, 200, row);
-    row += 7;
+    // 3. Passenger Spett.le Box (Right)
+    doc.setDrawColor(0);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(110, 50, 85, 30, 3, 3);
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "italic");
+    doc.text("Spett.le", 115, 56);
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "bold");
+    doc.text(ticket.name, 115, 63);
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.text("Cell. - " + (ticket.phone || 'N/A'), 115, 72);
 
-    doc.text("Codice prenotazione", 10, row);
-    doc.text(":", 60, row);
-    doc.text(ticket.bookingCode, 65, row, { maxWidth: width }, null, "left");
-    ticket.bookingCode.length > length ? (row += 10) : (row += 4);
-    doc.line(10, row, 200, row);
-    row += 7;
+    // 4. Header Labels Bar
+    doc.setFillColor(245, 245, 245);
+    doc.roundedRect(15, 90, 180, 15, 2, 2, 'FD');
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "italic");
+    doc.text("Prenotato il", 18, 96);
+    doc.text("Numero", 40, 96);
+    doc.text("PNR", 75, 96);
+    doc.text("Compagnia", 105, 96);
+    doc.text("Passeggero", 135, 96);
 
-    doc.text("Date Viaggio", 10, row);
-    doc.text(":", 60, row);
-    doc.text(ticket.dates, 65, row, { maxWidth: width }, null, "left");
-    ticket.dates && ticket.dates.length > length ? (row += 10) : (row += 4);
-    doc.line(10, row, 200, row);
-    row += 7;
+    // 5. Main Content Row Container
+    doc.roundedRect(15, 110, 180, 90, 3, 3);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    
+    // Line 1: Main Flight Data
+    doc.text(ticket.bookedOn, 18, 120);
+    doc.text(ticket.ticketNumber || 'N/A', 40, 120, { maxWidth: 33 });
+    doc.text(ticket.bookingCode || 'N/A', 75, 120, { maxWidth: 28 });
+    doc.text(ticket.flight || 'N/A', 105, 120, { maxWidth: 28 });
+    doc.text(ticket.name, 135, 120, { maxWidth: 58 });
 
-    doc.text("Porto di partenza", 10, row);
-    doc.text(":", 60, row);
-    doc.text(ticket.travel1, 65, row, { maxWidth: width }, null, "left");
-    ticket.travel1 && ticket.travel1.length > length ? (row += 10) : (row += 4);
-    doc.line(10, row, 200, row);
-    row += 7;
-
-    doc.text("Porto di arrivo", 10, row);
-    doc.text(":", 60, row);
-    doc.text(ticket.travel2, 65, row, { maxWidth: width }, null, "left");
-    ticket.travel2 && ticket.travel2.length > length ? (row += 10) : (row += 4);
-    doc.line(10, row, 200, row);
-    row += 7;
-
-    doc.text("Numero del biglietto", 10, row);
-    doc.text(":", 60, row);
-    doc.text(ticket.ticketNumber, 65, row, { maxWidth: width }, null, "left");
-    ticket.ticketNumber && ticket.ticketNumber.length > length ? (row += 10) : (row += 4);
-    doc.line(10, row, 200, row);
-    row += 7;
-
-    doc.text("Pagato", 10, row);
-    doc.text(":", 60, row);
-    let total =
-      parseFloat(
-        (parseFloat(ticket.receivingAmount1) || 0) +
-          (parseFloat(ticket.receivingAmount2) || 0) +
-          (parseFloat(ticket.receivingAmount3) || 0)
-      ).toFixed(2) + " EUR";
-    doc.text(total, 65, row, { maxWidth: width }, null, "left");
-    total.length > length ? (row += 10) : (row += 4);
-    doc.line(10, row, 200, row);
-    row += 7;
-
-    doc.text("Metodo di pagamento", 10, row);
-    doc.text(":", 60, row);
-    let methods =
-      ticket.paymentMethod +
-      (ticket.receivingAmount2Method
-        ? " - " + ticket.receivingAmount2Method
-        : "") +
-      (ticket.receivingAmount3Method
-        ? " - " + ticket.receivingAmount3Method
-        : "");
-    doc.text(methods, 65, row, { maxWidth: width }, null, "left");
-    methods.length > length ? (row += 10) : (row += 4);
-    doc.line(10, row, 200, row);
-    row += 7;
-
-    doc.text("Volo/Nave", 10, row);
-    doc.text(":", 60, row);
-    doc.text(ticket.flight, 65, row, { maxWidth: width }, null, "left");
-    ticket.flight && ticket.flight.length > length ? (row += 10) : (row += 4);
-    doc.line(10, row, 200, row);
-    row += 7;
-
-    doc.text("Numero di telefono", 10, row);
-    doc.text(":", 60, row);
-    doc.text(ticket.phone, 65, row, { maxWidth: width }, null, "left");
-    ticket.phone && ticket.phone.length > length ? (row += 10) : (row += 4);
-    doc.line(10, row, 200, row);
-    row += 7;
-
-    if (ticket.refund) {
-      doc.text("Rimborso", 10, row);
-      doc.text(":", 60, row);
-      let refund =
-        ticket.refund +
-        " EUR" +
-        (ticket.refundDate ? " - " + formatDate(ticket.refundDate, "IT") : "");
-      doc.text(refund, 65, row, { maxWidth: width }, null, "left");
-      refund.length > length ? (row += 10) : (row += 4);
-      doc.line(10, row, 200, row);
-      row += 7;
+    // Line 3: Itinerary details (Routes)
+    doc.setFontSize(8);
+    doc.text(`Route 1 Info: ${ticket.travel1 || 'N/A'}`, 18, 140);
+    if (ticket.travel2) {
+      doc.text(`Route 2 Info: ${ticket.travel2}`, 18, 145);
     }
 
-    row = 280;
+    // 6. Totals Grid & Signature
+    const startTotalsY = 210;
+    doc.roundedRect(15, startTotalsY, 180, 50, 3, 3);
+    
+    // Vertical separators for totals
+    doc.line(55, startTotalsY, 55, startTotalsY + 15);
+    doc.line(95, startTotalsY, 95, startTotalsY + 15);
+    doc.line(135, startTotalsY, 135, startTotalsY + 15);
+    doc.line(165, startTotalsY, 165, startTotalsY + 15);
+
+    // Labels for totals
     doc.setFontSize(8);
-    doc.text("Indus Viaggi", 200, row, null, null, "right");
-    row += 2;
-    doc.line(10, row, 200, row);
-    row += 3;
-    doc.text(
-      "Via Don Giovanni Alai, 6/A, 42121 Reggio Emilia RE",
-      200,
-      row,
-      null,
-      null,
-      "right"
-    );
-    doc.save(ticket.name.replace(/\W/g, "_") + "_" + ticket.id + ".pdf");
+    doc.text("Tot. Importo", 18, startTotalsY + 5);
+    doc.text("", 58, startTotalsY + 5);
+    doc.text("Tot. Pagato", 138, startTotalsY + 5);
+    doc.text("Da Saldare", 168, startTotalsY + 5);
+
+    // Values for totals
+    doc.setFontSize(10);
+    doc.text(ticket.receivingAmountT || '0.00', 40, startTotalsY + 12, null, null, "right");
+    doc.text('', 80, startTotalsY + 12, null, null, "right");
+    doc.text(ticket.receivingAmountT || '0.00', 160, startTotalsY + 12, null, null, "right");
+    doc.text(ticket.daSaldare, 190, startTotalsY + 12, null, null, "right");
+
+    // Net amount prominent line
+    doc.line(15, startTotalsY + 15, 195, startTotalsY + 15);
+    doc.setFont("helvetica", "bold");
+    doc.text("Tot. Saldato", 145, startTotalsY + 22);
+    doc.text(ticket.receivingAmountT || '0.00', 190, startTotalsY + 22, null, null, "right");
+    doc.setFont("helvetica", "normal");
+
+    console.log(ticket);
+
+    // Signature area
+    doc.line(140, startTotalsY + 15, 140, startTotalsY + 50);
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "italic");
+    doc.text("Firma", 165, startTotalsY + 47, null, null, "center");
+
+    // 7. Company Footer
+    doc.setFontSize(8);
+    doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.setFont("helvetica", "bold");
+    
+    const footerLine1 = "Via Don Giovanni Alai, 6/A 42121 - Reggio Emilia";
+    const footerLine2 = "Tel/fax: +39 0522434627 - Cell.: +39 3889220982, +39 3802126100";
+    const footerLine3 = "www.indusviaggi.com info@indusviaggi.com";
+
+    doc.text(footerLine1, 105, 280, null, null, "center");
+    doc.text(footerLine2, 105, 285, null, null, "center");
+    doc.text(footerLine3, 105, 290, null, null, "center");
+
+    doc.save(`${ticket.name.replace(/\W/g, "_")}_Ticket_${ticket.id}.pdf`);
   };
+
+
 
   const hideDeleteTicketDialog = () => {
     setDeleteTicketDialog(false);

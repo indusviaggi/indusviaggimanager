@@ -90,6 +90,7 @@ async function getAll(filters, flights = []) {
         (parseFloat(t.receivingAmount3) || 0)
       : 0;
     let profit = parseFloat((tra - tk2).toFixed(2));
+    let daSaldare = '0.00';//parseFloat((tk2 - tra).toFixed(2));
     let methods =
       t.paymentMethod +
       (t.receivingAmount2Method ? " - " + t.receivingAmount2Method : "") +
@@ -115,6 +116,7 @@ async function getAll(filters, flights = []) {
       idP: i + 1,
       receivingAmountT: "€ " + tra.toFixed(2),
       paidAmount: "€ " + t.paidAmount,
+      daSaldare: daSaldare.toFixed(2),
       agent,
       agentCost: t.agentCost && agent ? "€ " + t.agentCost : "",
       methods: methods,
