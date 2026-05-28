@@ -23,7 +23,11 @@ async function getFlights() {
     `(${moment().format("DD/MM/YYYY")}|` +
     `${moment().add(1, "days").format("DD/MM/YYYY")}|` +
     `${moment().add(2, "days").format("DD/MM/YYYY")}|` +
-    `${moment().add(3, "days").format("DD/MM/YYYY")})`;
+    `${moment().add(3, "days").format("DD/MM/YYYY")}|` +
+    `${moment().add(4, "days").format("DD/MM/YYYY")}|` +
+    `${moment().add(5, "days").format("DD/MM/YYYY")}|` +
+    `${moment().add(6, "days").format("DD/MM/YYYY")}|` +
+    `${moment().add(7, "days").format("DD/MM/YYYY")})`;
 
   const filter = {
     dates: {

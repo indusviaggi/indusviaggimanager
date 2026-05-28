@@ -47,7 +47,7 @@ export function Nav() {
     "expenses/categories": "Expenses Categories",
     "expenses/add": "Add Expense",
     "expenses/edit": "Edit Expense",
-    flights: "Next Flights/Events",
+    flights: "Next 7 days Flights",
   };
   
    const config = getConfig();
@@ -58,7 +58,7 @@ export function Nav() {
 
   const navMap = [
     { label: "Dashboard", href: "/", icon: <DashboardIcon sx={{ color: '#0288d1' }} /> },
-    { label: "Next Flights/Events", href: "/flights", icon: icon },
+    { label: "Next week Flights", href: "/flights", icon: icon },
     { label: "Tickets", href: "/tickets", icon: <ReceiptIcon sx={{ color: '#0288d1' }} /> },
     { label: "Refunds", href: "/refund", icon: <RefundIcon sx={{ color: '#0288d1' }} /> },
     { label: "Suppliers Transfers", href: "/seller", icon: <SupervisorAccountIcon sx={{ color: '#0288d1' }} /> },

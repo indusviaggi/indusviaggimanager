@@ -69,7 +69,7 @@ export default function NextFlightsPage() {
                 <Typography sx={{ textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{ticket.dates}</Typography>
               </Stack>
               <Stack direction="row" spacing={1}>
-                <Tooltip title="Info"><IconButton onClick={() => infoTicket(ticket)}><InfoIcon /></IconButton></Tooltip>
+                <Tooltip title="Info"><IconButton color={!ticket.amountsCompleted ? 'error' : 'success'} onClick={() => infoTicket(ticket)}><InfoIcon /></IconButton></Tooltip>
                 {ticket.isFlight && (
                   <Tooltip title="Check In"><IconButton onClick={() => checkin(ticket)} color="primary"><FlightTakeoffIcon /></IconButton></Tooltip>
                 )}

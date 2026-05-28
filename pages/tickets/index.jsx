@@ -52,7 +52,7 @@ function Index() {
     }
     // Multi-field search
     if (globalSearch) {
-      let fields = searchFields.includes("all") ? ["name", "agent", "bookingCode", "ticketNumber", "iata", "phone", "methods"] : searchFields;
+      let fields = searchFields.includes("all") ? ["name", "agent", "bookingCode", "ticketNumber", "iata", "phone", "methods", "desc", "cardNumber"] : searchFields;
       filtered = filtered.filter(ticket =>
         fields.some(field => (ticket[field] || "").toString().toLowerCase().includes(globalSearch.toLowerCase()))
       );
@@ -297,8 +297,6 @@ const downloadTicket = (ticket) => {
     doc.text(ticket.receivingAmountT || '0.00', 190, startTotalsY + 22, null, null, "right");
     doc.setFont("helvetica", "normal");
 
-    console.log(ticket);
-
     // Signature area
     doc.line(140, startTotalsY + 15, 140, startTotalsY + 50);
     doc.setFontSize(8);
@@ -532,7 +530,7 @@ const downloadTicket = (ticket) => {
                 input={<OutlinedInput label="Fields" />}
                 renderValue={selected => selected.includes("all") ? "All" : selected.join(", ")}
               >
-                {["all", "name", "agent", "bookingCode", "ticketNumber", "iata", "phone", "methods"].map(field => (
+                {["all", "name", "agent", "bookingCode", "ticketNumber", "iata", "phone", "methods", 'cardNumber'].map(field => (
                   <MenuItem key={field} value={field}>
                     <Checkbox checked={searchFields.indexOf(field) > -1} />
                     <ListItemText primary={{
@@ -543,7 +541,8 @@ const downloadTicket = (ticket) => {
                       ticketNumber: "Ticket",
                       iata: "Issued By",
                       phone: "Phone",
-                      methods: "Payment Method"
+                      methods: "Payment Method",
+                      cardNumber: "Card Number",
                     }[field] || field} />
                   </MenuItem>
                 ))}

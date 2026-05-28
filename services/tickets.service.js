@@ -57,7 +57,8 @@ async function getFlights() {
     let isFlight = !!url;
     flights.push({ ...r, url, isFlight });
   });
-  let tickets = getAll({}, flights);
+  let tickets = await getAll({}, flights);
+  console.log(tickets);
   return tickets;
 }
 
@@ -116,7 +117,6 @@ async function getAll(filters, flights = []) {
       idP: i + 1,
       receivingAmountT: "€ " + tra.toFixed(2),
       paidAmount: "€ " + t.paidAmount,
-      daSaldare: daSaldare,
       agent,
       agentCost: t.agentCost && agent ? "€ " + t.agentCost : "",
       methods: methods,
