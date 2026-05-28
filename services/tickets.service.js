@@ -35,6 +35,7 @@ export const ticketsService = {
   uploadAirArabia,
   uploadWizzAir,
   uploadFlixbus,
+  uploadEmirates,
 };
 
 async function getTicketsForSupply(filters = {}) {
@@ -934,4 +935,144 @@ async function uploadFlixbus(files) {
     }
 
     return allTickets;
+}
+
+async function uploadEmirates(files) {
+  const users = await fetchWrapper.get(usersUrl);
+  let agl = {};
+  let admin = "";
+  let agency = "";
+  users.forEach((userT) => {
+    let nameT = `${userT.firstName} ${userT.lastName}`;
+    if (userT.level === "admin") admin = userT.id;
+    if (nameT.toLowerCase().includes("agency")) agency = userT.id;
+    agl[userT.code] = userT.id;
+  });
+
+  const allTickets = [];
+
+  for (const fileContent of files) {
+    try {
+      // Parse XML - Extract root attributes
+      const recordLocatorMatch = fileContent.match(/RecordLocator="([^"]+)"/);
+      const ticketNumberMatch = fileContent.match(/TicketNumber="([^"]+)"/);
+      const bookingCode = recordLocatorMatch ? recordLocatorMatch[1] : '';
+      const ticketNumber = ticketNumberMatch ? ticketNumberMatch[1] : '';
+
+      // Extract creation date
+      const creationDateMatch = fileContent.match(/<CreationDate[^>]*>(\d{4}-\d{2}-\d{2})<\/CreationDate>/);
+      const bookedOn = creationDateMatch ? formatDate(new Date(creationDateMatch[1])) : formatDate(new Date());
+
+      // Extract phone number
+      const phoneMatch = fileContent.match(/<TelephoneNumber>([^<]+)<\/TelephoneNumber>/);
+      const phone = phoneMatch ? phoneMatch[1].replace(/\D/g, '').slice(-10) : '';
+
+      // Extract traveler name (first occurrence in Traveler element)
+      const travelerMatch = fileContent.match(/<Traveler[^>]*>[\s\S]*?<TravelerName>[\s\S]*?<Surname>([^<]+)<\/Surname>[\s\S]*?<GivenName>([^<]+)<\/GivenName>/);
+      const surname = travelerMatch ? travelerMatch[1].trim() : '';
+      const givenName = travelerMatch ? travelerMatch[2].trim() : '';
+      const passengerName = `${surname} ${givenName}`.trim();
+
+      // Extract flight information from Itinerary
+      const flightMatches = fileContent.match(/<Flight[^>]*>[\s\S]*?<\/Flight>/g) || [];
+      const flights = [];
+
+      for (const flightMatch of flightMatches) {
+        const airlineMatch = flightMatch.match(/<AirlineCode>([^<]+)<\/AirlineCode>/);
+        const flightNumMatch = flightMatch.match(/<FlightNumber>([^<]+)<\/FlightNumber>/);
+        const departureBlock = flightMatch.match(/<Departure>([\s\S]*?)<\/Departure>/);
+        const arrivalBlock = flightMatch.match(/<Arrival>([\s\S]*?)<\/Arrival>/);
+
+        if (airlineMatch && flightNumMatch && departureBlock && arrivalBlock) {
+          const depAirport = departureBlock[1].match(/<AirportName>([^<]+)<\/AirportName>/);
+          const depDate = departureBlock[1].match(/<Date>(\d{4}-\d{2}-\d{2})<\/Date>/);
+          const arrAirport = arrivalBlock[1].match(/<AirportName>([^<]+)<\/AirportName>/);
+          const arrDate = arrivalBlock[1].match(/<Date>(\d{4}-\d{2}-\d{2})<\/Date>/);
+
+          if (depAirport && depDate && arrAirport && arrDate) {
+            flights.push({
+              airline: airlineMatch[1],
+              number: flightNumMatch[1],
+              depAirport: depAirport[1],
+              depDate: depDate[1],
+              arrAirport: arrAirport[1],
+              arrDate: arrDate[1]
+            });
+          }
+        }
+      }
+
+      // Format flight information
+      let travel1 = '';
+      let travel2 = '';
+      let dates = '';
+
+      if (flights.length > 0) {
+        travel1 = `${flights[0].depAirport}/${flights[0].arrAirport}`;
+        const depDateFormatted = new Date(flights[0].depDate);
+        dates = `${depDateFormatted.getDate().toString().padStart(2, '0')}/${(depDateFormatted.getMonth() + 1).toString().padStart(2, '0')}/${depDateFormatted.getFullYear()}`;
+
+        if (flights.length > 1) {
+          travel2 = `${flights[1].depAirport}/${flights[1].arrAirport}`;
+        }
+      }
+
+      // Extract total price from FareGroup (not nested Price, to get total for all travelers)
+      const fareGroupMatch = fileContent.match(/<FareGroup[^>]*TotalPrice="([^"]+)"/);
+      const totalPrice = fareGroupMatch ? parseFloat(fareGroupMatch[1]) / 100 : 0; // Assuming price is in cents
+
+      // Extract airline code from first flight, fallback to EK
+      const airlineCode = flights.length > 0 ? flights[0].airline : 'EK';
+      
+      // Extract airline name from XML if available
+      const airlineNameMatch = fileContent.match(/<AirlineName>([^<]+)<\/AirlineName>/);
+      const airlineName = airlineNameMatch ? airlineNameMatch[1].trim() : airlineCode;
+      const iac = { 38286592: "SCA", 38288331: "INDUS" };
+
+      // Build ticket object
+      const tkt = {
+        name: passengerName,
+        bookingCode: bookingCode,
+        agent: '',
+        agentId: agency || admin || "123456789012345678901234",
+        iata: iac[38288331],
+        office: '',
+        agentCost: 0,
+        ticketNumber: ticketNumber,
+        paymentMethod: '',
+        paidAmount: totalPrice,
+        receivingAmount1: 0,
+        receivingAmount1Date: '',
+        receivingAmount2Date: '',
+        receivingAmount2Method: "",
+        receivingAmount3Date: '',
+        receivingAmount3Method: "",
+        receivingAmount2: 0,
+        receivingAmount3: 0,
+        cardNumber: '',
+        isVoid: false,
+        bookedOn: bookedOn,
+        travel1: travel1,
+        travel2: travel2,
+        dates: dates,
+        phone: phone,
+        flight: airlineName,
+        refund: "",
+        refundDate: "",
+        desc: "",
+        supplied: 0,
+        returned: 0,
+        returnedDate: "",
+        paidByAgent: 0,
+      };
+
+      if (passengerName) {
+        allTickets.push(tkt);
+      }
+    } catch (error) {
+      console.error('Error processing Emirates XML file:', error);
+    }
+  }
+
+  return allTickets;
 }

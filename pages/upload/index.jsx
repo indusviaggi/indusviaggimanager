@@ -42,11 +42,23 @@ function Index() {
   const handleFileChange = useCallback((e) => {
     const selectedFiles = Array.from(e.target.files);
     if (selectedFiles.length > 0) {
-      const filteredFiles = selectedFiles.filter(file => {
-        const fileNameParts = file.name.split(".");
-        const extension = fileNameParts[fileNameParts.length - 1];
-        return (fileNameParts.length > 1 && extension.includes("M")) || months.includes(extension);
-      });
+      let filteredFiles = selectedFiles;
+      
+      if (uploadType === 'emirates') {
+        // For Emirates, accept only XML files
+        filteredFiles = selectedFiles.filter(file => {
+          const fileNameParts = file.name.split(".");
+          const extension = fileNameParts[fileNameParts.length - 1];
+          return extension.toLowerCase() === 'xml';
+        });
+      } else {
+        // For other types, keep original Amadeus logic
+        filteredFiles = selectedFiles.filter(file => {
+          const fileNameParts = file.name.split(".");
+          const extension = fileNameParts[fileNameParts.length - 1];
+          return (fileNameParts.length > 1 && extension.includes("M")) || months.includes(extension);
+        });
+      }
 
       setFiles(filteredFiles);
 
@@ -66,7 +78,7 @@ function Index() {
       setFiles([]);
       setContent([]);
     }
-  }, [months]);
+  }, [months, uploadType]);
 
   const deleteItem = useCallback((index) => {
     setFiles(prevFiles => prevFiles.filter((_, i) => i !== index));
@@ -90,7 +102,7 @@ function Index() {
   function handlePreview() {
     setIsProcessing(true);
     let parsePromise;
-    const contentToUpload = uploadType === 'amadeus' ? content : (textContent ? [textContent] : content);
+    const contentToUpload = (uploadType === 'amadeus' || uploadType === 'emirates') ? content : (textContent ? [textContent] : content);
     if (contentToUpload.length === 0) {
         alertService.error("Please upload a file or enter text content.");
         setIsProcessing(false);
@@ -105,6 +117,9 @@ function Index() {
         break;
       case 'flixbus':
         parsePromise = ticketsService.uploadFlixbus(contentToUpload);
+        break;
+      case 'emirates':
+        parsePromise = ticketsService.uploadEmirates(contentToUpload);
         break;
       case 'amadeus':
       default:
@@ -192,15 +207,25 @@ function Index() {
                 aria-label="upload-type"
                 name="upload-type-group"
                 value={uploadType}
-                onChange={(e) => setUploadType(e.target.value)}
+                onChange={(e) => {
+                  setUploadType(e.target.value);
+                  // Clear previous data when switching upload types
+                  setFiles([]);
+                  setContent([]);
+                  setTextContent('');
+                  setProcessedTickets([]);
+                  const input = document.getElementById("filesInput");
+                  if(input) input.value = "";
+                }}
               >
                 <FormControlLabel value="amadeus" control={<Radio />} label="Amadeus" />
                 <FormControlLabel value="airarabia" control={<Radio />} label="Air Arabia" />
                 <FormControlLabel value="wizzair" control={<Radio />} label="Wizz Air" />
                 <FormControlLabel value="flixbus" control={<Radio />} label="Flixbus" />
+                <FormControlLabel value="emirates" control={<Radio />} label="Emirates" />
               </RadioGroup>
             </FormControl>
-            {uploadType === 'amadeus' && (
+            {(uploadType === 'amadeus' || uploadType === 'emirates') && (
               <div id="FileUpload">
                 <div className="wrapper">
                   <div className="image-upload-wrap">
@@ -209,7 +234,7 @@ function Index() {
                       className="file-upload-input"
                       type="file"
                       name="files[]"
-                      accept=".M*"
+                      accept={uploadType === 'emirates' ? '.xml' : '.M*'}
                       multiple
                       onChange={handleFileChange}
                     />
@@ -236,7 +261,7 @@ function Index() {
                   ))}
               </div>
             )}
-            {uploadType !== 'amadeus' && (
+            {uploadType !== 'amadeus' && uploadType !== 'emirates' && (
                 <Box sx={{ mt: 2 }}>
                     <TextField
                         label="Paste Content Here"
@@ -253,7 +278,7 @@ function Index() {
           </form>
           <Button
             variant="contained"
-            disabled={(content.length === 0 && !textContent) || isProcessing}
+            disabled={((uploadType === 'amadeus' || uploadType === 'emirates') && content.length === 0) || (uploadType !== 'amadeus' && uploadType !== 'emirates' && !textContent) || isProcessing}
             color="primary"
             fullWidth
             onClick={handlePreview}
