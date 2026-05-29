@@ -55,6 +55,7 @@ function ticketsModel() {
       agent: { type: String, required: false },
       agentId: { type: mongoose.Schema.ObjectId, required: false },
       agentCost: { type: String, required: false },
+      customerCost: { type: String, required: false },
       paidByAgent: { type: String, required: false },
       iata: { type: String, required: false },
       ticketNumber: { type: String, required: false },

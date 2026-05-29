@@ -28,7 +28,7 @@ function Index() {
   const [ticket, setTicket] = useState(null);
   const [loading, setLoading] = useState(false);
   const [dates, setDates] = useState({ start: "", end: "", type: "" });
-  const [totals, setTotals] = useState([0, 0, 0, 0]);
+  const [totals, setTotals] = useState([0, 0, 0, 0, 0]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(50);
   const [searchFields, setSearchFields] = useState(["all"]);
@@ -65,7 +65,7 @@ function Index() {
         let aValue = a[sortConfig.key];
         let bValue = b[sortConfig.key];
 
-        if (['profit', 'paidAmount', 'receivingAmountT', 'agentCost'].includes(sortConfig.key)) {
+        if (['profit', 'paidAmount', 'customerCost', 'receivingAmountT', 'agentCost'].includes(sortConfig.key)) {
             aValue = parseFloat(String(aValue || '0').replace(/[^\d.-]/g, ''));
             bValue = parseFloat(String(bValue || '0').replace(/[^\d.-]/g, ''));
         } else if (sortConfig.key === 'bookedOn') {
@@ -92,7 +92,7 @@ function Index() {
 
   const PRIORITY_FIELDS = [
     'name', 'bookingCode', 'ticketNumber', 'bookedOn', 'iata',
-    'profit', 'paidAmount', 'receivingAmountT', 'methods', 'paymentMethod',
+    'profit', 'paidAmount', 'customerCost', 'receivingAmountT', 'methods', 'paymentMethod',
     'phone', 'agent', 'agentCost',
     'receivingAmount1', 'receivingAmount1Date',
     'receivingAmount2', 'receivingAmount2Date',
@@ -367,21 +367,25 @@ function Index() {
     let tc = 0;
     let tr = 0;
     let ta = 0;
+    let tcc = 0;
     for (let i = 0; i < data.length; i++) {
       let ttp = data[i].profit.replace("€ ", "");
       let ttc = data[i].paidAmount.replace("€ ", "");
       let ttr = data[i].receivingAmountT.replace("€ ", "");
       let tta = data[i].agentCost ? data[i].agentCost.replace("€ ", "") : 0;
+      let tcccc = data[i].customerCost ? data[i].customerCost.replace("€ ", "") : 0;
       tp += parseFloat(ttp);
       tc += parseFloat(ttc);
       tr += parseFloat(ttr);
       ta += parseFloat(tta);
+      tcc += parseFloat(tcccc);
     }
     setTotals([
       "€ " + tp.toFixed(2),
       "€ " + tc.toFixed(2),
       "€ " + tr.toFixed(2),
       "€ " + ta.toFixed(2),
+      "€ " + tcc.toFixed(2),
     ]);
   };
 
@@ -654,6 +658,7 @@ function Index() {
           <Typography variant="body1" sx={{ fontWeight: 'bold', border: '1px solid #bdbdbd', padding: '2px 10px', borderRadius: '16px', background: '#e0e0e0' }}>Tickets: {tickets.length}</Typography>
           <Typography variant="body2">Profit: {totals[0]}</Typography>
           <Typography variant="body2">Cost: {totals[1]}</Typography>
+          <Typography variant="body2">Cust. Cost: {totals[4]}</Typography>
           <Typography variant="body2">Received: {totals[2]}</Typography>
           <Typography variant="body2">Agent Cost: {totals[3]}</Typography>
         </Box>
@@ -799,6 +804,7 @@ function Index() {
               <TableRow><TableCell>PNR:</TableCell><TableCell>{ticket.bookingCode}</TableCell></TableRow>
               <TableRow><TableCell>Ticket:</TableCell><TableCell>{ticket.ticketNumber}</TableCell></TableRow>
               <TableRow><TableCell>Cost:</TableCell><TableCell>{ticket.paidAmount}</TableCell></TableRow>
+              <TableRow><TableCell>Customer Cost:</TableCell><TableCell>{ticket.customerCost}</TableCell></TableRow>
               <TableRow><TableCell>Receiving Amount 1:</TableCell><TableCell>{ticket.receivingAmount1}</TableCell></TableRow>
               <TableRow><TableCell>Receiving Date 1:</TableCell><TableCell>{ticket.receivingAmount1Date}</TableCell></TableRow>
               <TableRow><TableCell>Payment Method:</TableCell><TableCell>{ticket.paymentMethod}</TableCell></TableRow>

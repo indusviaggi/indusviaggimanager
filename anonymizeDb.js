@@ -90,6 +90,7 @@ async function anonymizeTickets(db, faker) {
             cardNumber: `**** **** **** ${faker.string.numeric(4)}`,
             paymentMethod: faker.finance.transactionType(),
             paidAmount: obfuscateAmount(ticket.paidAmount),
+            customerCost: obfuscateAmount(ticket.customerCost),
             receivingAmount1: obfuscateAmount(ticket.receivingAmount1),
             receivingAmount1Date: ticket.receivingAmount1Date ? fakeDate() : '',
             receivingAmount2: obfuscateAmount(ticket.receivingAmount2),

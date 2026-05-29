@@ -117,6 +117,7 @@ async function getAll(filters, flights = []) {
       idP: i + 1,
       receivingAmountT: "€ " + tra.toFixed(2),
       paidAmount: "€ " + t.paidAmount,
+      customerCost: t.customerCost !== undefined ? "€ " + parseFloat(t.customerCost || 0).toFixed(2) : "",
       agent,
       agentCost: t.agentCost && agent ? "€ " + t.agentCost : "",
       methods: methods,
@@ -219,16 +220,18 @@ async function getProfit(filters) {
       totalReceivingAmount1 + totalReceivingAmount2 + totalReceivingAmount3;
 
     let paidAmount = parseFloat(ticket.paidAmount);
+    let customerCost = parseFloat(ticket.customerCost) || 0;
     let profit = totalReceivingAmount - paidAmount;
     let bookings = 1;
 
     if (ticketsP[key] !== undefined) {
       ticketsP[key].totalReceivingAmount += totalReceivingAmount;
       ticketsP[key].paidAmount += paidAmount;
+      ticketsP[key].customerCost += customerCost;
       ticketsP[key].profit += profit;
       ticketsP[key].bookings += 1;
     } else {
-      ticketsP[key] = { totalReceivingAmount, paidAmount, profit, bookings };
+      ticketsP[key] = { totalReceivingAmount, paidAmount, customerCost, profit, bookings };
     }
 
     if (
@@ -564,6 +567,7 @@ async function upload(files) {
         iata: iac.hasOwnProperty(ia) ? iac[ia] : ia,
         office: iac.hasOwnProperty(ofi) ? iac[ofi] : ofi,
         agentCost: ac !== "" ? ac : 0,
+        customerCost: 0,
         ticketNumber: t.length ? t[i] : tc,
         paymentMethod: mt,
         paidAmount: tk2,
@@ -710,6 +714,7 @@ async function uploadAirArabia(files) {
                 iata: 'AIR ARABIA MAROC',
                 office: '', // Not available in this format
                 agentCost: 0, // Not available in this format
+                customerCost: 0,
                 ticketNumber: ticketNumber,
                 paymentMethod: '',
                 paidAmount: paidAmount,
@@ -804,6 +809,7 @@ async function uploadWizzAir(files) {
           iata: 'WIZZAIR',
           office: '',
           agentCost: 0,
+          customerCost: 0,
           ticketNumber: `${bookingCode}-${passengerIndex + 1}`, // Make ticket number unique per passenger
           paymentMethod: '',
           paidAmount: paidAmount,
@@ -906,6 +912,7 @@ async function uploadFlixbus(files) {
                 iata: 'FLIXBUS',
                 office: '',
                 agentCost: 0,
+                customerCost: 0,
                 ticketNumber: `${bookingCode}-${allTickets.length + 1}`, // Unique ticket number
                 paymentMethod: '',
                 paidAmount: paidAmount,
@@ -1041,6 +1048,7 @@ async function uploadEmirates(files) {
         iata: iac[38288331],
         office: '',
         agentCost: 0,
+        customerCost: 0,
         ticketNumber: ticketNumber,
         paymentMethod: '',
         paidAmount: totalPrice,
