@@ -391,11 +391,15 @@ function Index() {
 
   // Export CSV using selected fields (if any) or all fields by default
   const exportCSV = () => {
-    if (!tickets.length) return;
-    const fields = selectedFields.length ? selectedFields : Array.from(new Set(tickets.flatMap(t => Object.keys(t || {}))));
+    const dataToExport = selectedIds.length > 0
+      ? apiTickets.filter(t => selectedIds.includes(t.id))
+      : tickets;
+
+    if (!dataToExport.length) return;
+    const fields = selectedFields.length ? selectedFields : Array.from(new Set(dataToExport.flatMap(t => Object.keys(t || {}))));
     const csvRows = [
       fields.join(","),
-      ...tickets.map(row =>
+      ...dataToExport.map(row =>
         fields.map(field => JSON.stringify(row[field] ?? "")).join(",")
       ),
     ];
@@ -411,12 +415,16 @@ function Index() {
 
   // Export PDF with buyer page styling (Name, Booking Date, Ticket N., Cost, Paid, Remained)
   const exportTicketsPDF = () => {
-    if (!tickets || !tickets.length) return;
+    const dataToExport = selectedIds.length > 0
+      ? apiTickets.filter(t => selectedIds.includes(t.id))
+      : tickets;
+
+    if (!dataToExport || !dataToExport.length) return;
 
     // Compute totals
     let totalCost = 0;
     let totalPaid = 0;
-    tickets.forEach(t => {
+    dataToExport.forEach(t => {
       const costN = parseFloat(String(t.agentCost || '0').replace(/[^\d.-]/g, '')) || 0;
       const paidN = parseFloat(String(t.receivingAmountT || '0').replace(/[^\d.-]/g, '')) || 0;
       totalCost += costN;
@@ -458,7 +466,7 @@ function Index() {
 
     // Table
     const headers = [["Name", "Booking Date", "PNR", "Ticket N.", "Agent Cost", "Fully Paid"]];
-    const body = tickets.map(t => {
+    const body = dataToExport.map(t => {
       const costStr = t.receivingAmountT || '';
       const paidStr = t.agentCost || '';
       const costN = parseFloat(String(costStr).replace(/[^\d.-]/g, '')) || 0;
