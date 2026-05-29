@@ -170,6 +170,7 @@ function Index() {
   const handleTicketChange = (ticketIndex, fieldKey, newValue) => {
     const numericFields = [
       'agentCost',
+      'customerCost',
       'paidAmount',
       'receivingAmount1',
       'receivingAmount2',
@@ -307,7 +308,7 @@ function Index() {
                               if (!field) return <Box key={subIndex} sx={{ flex: 1 }} />; // Empty box for alignment if odd number of fields
                               const [key, value] = field;
                               const isNumericField = [
-                                'agentCost', 'paidAmount', 'receivingAmount1', 'receivingAmount2',
+                                'agentCost', 'paidAmount', 'customerCost', 'receivingAmount1', 'receivingAmount2',
                                 'receivingAmount3', 'refund', 'supplied', 'returned', 'paidByAgent'
                               ].includes(key);
 
