@@ -178,7 +178,9 @@ function Index() {
     );
   };
 
-  const drawTicketReceipt = (doc, ticket) => {
+  const drawTicketReceipt = (doc, tickets) => {
+    const ticketList = Array.isArray(tickets) ? tickets : [tickets];
+    const firstTicket = ticketList[0];
     const imgData = "logo.png";
     const imgData1 = "iata2.jpg";
     const primaryColor = [0, 105, 127];
@@ -195,7 +197,7 @@ function Index() {
     
     doc.setFontSize(9);
     doc.text(`Operatore: Indus Viaggi`, 15, 67);
-    doc.text(`Codice Biglietto: ${ticket.ticketNumber}`, 15, 72);
+    doc.text(`Nr. Documenti: ${ticketList.length}`, 15, 72);
 
     // 3. Passenger Spett.le Box (Right)
     doc.setDrawColor(0);
@@ -206,10 +208,10 @@ function Index() {
     doc.text("Spett.le", 115, 56);
     doc.setFontSize(11);
     doc.setFont("helvetica", "bold");
-    doc.text(ticket.name, 115, 63);
+    doc.text(firstTicket.name, 115, 63, { maxWidth: 75 });
     doc.setFontSize(9);
     doc.setFont("helvetica", "normal");
-    doc.text("Cell. - " + (ticket.phone || 'N/A'), 115, 72);
+    doc.text("Contatto: " + (firstTicket.phone || 'N/A'), 115, 72);
 
     // 4. Header Labels Bar
     doc.setFillColor(245, 245, 245);
@@ -223,57 +225,66 @@ function Index() {
     doc.text("Passeggero", 135, 96);
 
     // 5. Main Content Row Container
-    doc.roundedRect(15, 110, 180, 90, 3, 3);
+    doc.roundedRect(15, 110, 180, 100, 3, 3);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
     
-    // Line 1: Main Flight Data
-    doc.text(ticket.bookedOn, 18, 120);
-    doc.text(ticket.ticketNumber || 'N/A', 40, 120, { maxWidth: 33 });
-    doc.text(ticket.bookingCode || 'N/A', 75, 120, { maxWidth: 28 });
-    doc.text(ticket.flight || 'N/A', 105, 120, { maxWidth: 28 });
-    doc.text(ticket.name, 135, 120, { maxWidth: 58 });
+    // List Passengers
+    let currentY = 118;
+    ticketList.slice(0, 5).forEach((t) => {
+      doc.text(t.bookedOn, 18, currentY);
+      doc.text(t.ticketNumber || 'N/A', 40, currentY, { maxWidth: 33 });
+      doc.text(t.bookingCode || 'N/A', 75, currentY, { maxWidth: 28 });
+      doc.text(t.flight || 'N/A', 105, currentY, { maxWidth: 28 });
+      doc.text(t.name, 135, currentY, { maxWidth: 58 });
+      currentY += 6;
+    });
 
-    // Line 3: Itinerary details (Routes)
+    // Dettagli Viaggio
+    currentY = 150;
     doc.setFontSize(8);
     doc.setFont("helvetica", "bold");
-    doc.text("Dettagli Viaggio:", 18, 135);    
+    doc.text("Dettagli Viaggio:", 18, currentY);    
     doc.setFont("helvetica", "normal");
-    doc.text(`Route 1 Info: ${ticket.travel1 || 'N/A'}`, 18, 140);
-    if (ticket.travel2) {
-      doc.text(`Route 2 Info: ${ticket.travel2}`, 18, 145);
-    }
-
-    // Add a small gap before payment details
-    let currentY = 160;
+    currentY += 5;
+    
+    ticketList.forEach(t => {
+      if (currentY > 180) return;
+      doc.text(`${t.name.split(' ')[0]}: ${t.travel1 || 'N/A'} ${t.travel2 ? ' || ' + t.travel2 : ''}`, 18, currentY, { maxWidth: 170 });
+      currentY += 7;
+    });
 
     // Payment Details Section
+    currentY = 182;
     doc.setFont("helvetica", "bold");
     doc.setFontSize(8);
     doc.text("Dettagli Pagamento:", 18, currentY);
     currentY += 5;
     doc.setFont("helvetica", "normal");
 
-    // Receiving Amount 1
-    if (ticket.receivingAmount1 && parseFloat(String(ticket.receivingAmount1).replace(/[^\d.-]/g, '')) > 0) {
-      doc.text(`Importo 1: ${ticket.receivingAmount1} del ${ticket.receivingAmount1Date} via ${ticket.paymentMethod || 'N/A'}`, 18, currentY);
-      currentY += 5;
-    }
+    let totalPaymentsNumeric = 0;
 
-    // Receiving Amount 2
-    if (ticket.receivingAmount2 && parseFloat(String(ticket.receivingAmount2).replace(/[^\d.-]/g, '')) > 0) {
-      doc.text(`Importo 2: ${ticket.receivingAmount2} del ${ticket.receivingAmount2Date} via ${ticket.receivingAmount2Method || 'N/A'}`, 18, currentY);
-      currentY += 5;
-    }
+    ticketList.forEach(t => {
+      const p1 = parseFloat(t.receivingAmount1 || '0') || 0;
+      const p2 = parseFloat(t.receivingAmount2 || '0') || 0;
+      const p3 = parseFloat(t.receivingAmount3 || '0') || 0;
+      
+      let payments = [];
+      if (p1 > 0) payments.push(`€ ${p1.toFixed(2)} (${t.receivingAmount1Date}) - ${t.paymentMethod}`);
+      if (p2 > 0) payments.push(`€ ${p2.toFixed(2)} (${t.receivingAmount2Date}) - ${t.receivingAmount2Method}`);
+      if (p3 > 0) payments.push(`€ ${p3.toFixed(2)} (${t.receivingAmount3Date}) - ${t.receivingAmount3Method}`);
 
-    // Receiving Amount 3
-    if (ticket.receivingAmount3 && parseFloat(String(ticket.receivingAmount3).replace(/[^\d.-]/g, '')) > 0) {
-      doc.text(`Importo 3: ${ticket.receivingAmount3} del ${ticket.receivingAmount3Date} via ${ticket.receivingAmount3Method || 'N/A'}`, 18, currentY);
-      currentY += 5;
-    }
+      if (payments.length > 0 && currentY < 210) {
+        const paymentStr = `${t.name.split(' ')[0]}: ${payments.join(' || ')}`;
+        doc.text(paymentStr, 18, currentY, { maxWidth: 170 });
+        const lines = doc.splitTextToSize(paymentStr, 170);
+        currentY += (lines.length * 4);
+      }
+      totalPaymentsNumeric += (p1 + p2 + p3);
+    });
 
     // 6. Totals Grid & Signature
-    const startTotalsY = 210;
+    const startTotalsY = 215;
     doc.roundedRect(15, startTotalsY, 180, 50, 3, 3);
     
     // Vertical separators for totals
@@ -291,16 +302,16 @@ function Index() {
 
     // Values for totals
     doc.setFontSize(10);
-    doc.text(ticket.receivingAmountT || '0.00', 40, startTotalsY + 12, null, null, "right");
+    doc.text(`€ ${totalPaymentsNumeric.toFixed(2)}`, 40, startTotalsY + 12, null, null, "right");
     doc.text('', 80, startTotalsY + 12, null, null, "right");
-    doc.text(ticket.receivingAmountT || '0.00', 160, startTotalsY + 12, null, null, "right");
-    doc.text('0.00', 190, startTotalsY + 12, null, null, "right");
+    doc.text(`€ ${totalPaymentsNumeric.toFixed(2)}`, 160, startTotalsY + 12, null, null, "right"); // Tot. Pagato
+    doc.text('€ 0.00', 190, startTotalsY + 12, null, null, "right"); // Da Saldare
 
     // Net amount prominent line
     doc.line(15, startTotalsY + 15, 195, startTotalsY + 15);
     doc.setFont("helvetica", "bold");
     doc.text("Tot. Saldato", 145, startTotalsY + 22);
-    doc.text(ticket.receivingAmountT || '0.00', 190, startTotalsY + 22, null, null, "right");
+    doc.text(`€ ${totalPaymentsNumeric.toFixed(2)}`, 190, startTotalsY + 22, null, null, "right");
     doc.setFont("helvetica", "normal");
 
     // Signature area
@@ -325,7 +336,7 @@ function Index() {
 
   const downloadTicket = (ticket) => {
     const doc = new jsPDF();
-    drawTicketReceipt(doc, ticket);
+    drawTicketReceipt(doc, [ticket]);
     doc.save(`${ticket.name.replace(/\W/g, "_")}_Ticket_${ticket.id}.pdf`);
   };
 
@@ -334,11 +345,8 @@ function Index() {
     if (selectedData.length === 0) return;
 
     const doc = new jsPDF();
-    selectedData.forEach((t, index) => {
-      if (index > 0) doc.addPage();
-      drawTicketReceipt(doc, t);
-    });
-    doc.save(`Selected_Tickets_Receipts_${moment().format('YYYYMMDD_HHmm')}.pdf`);
+    drawTicketReceipt(doc, selectedData);
+    doc.save(`Tickets_Summary_${moment().format('YYYYMMDD_HHmm')}.pdf`);
   };
 
 
