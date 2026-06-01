@@ -183,7 +183,6 @@ function Index() {
     const firstTicket = ticketList[0];
     const imgData = "logo.png";
     const imgData1 = "iata2.jpg";
-    const primaryColor = [0, 105, 127];
 
     // 1. Logo (Centered as per image)
     doc.addImage(imgData, "PNG", 15, 5, 40, 40);
@@ -192,12 +191,15 @@ function Index() {
     // 2. Bolla Header (Left)
     doc.setFontSize(12);
     doc.setFont("helvetica", "bold");
-    doc.text(`Ricevuta di pagamento del ${moment().date()}/${moment().month() + 1}/${moment().year()}`, 15, 60);
+    const lastValidPaymentDate = firstTicket.receivingAmount3Date?.trim() || firstTicket.receivingAmount2Date?.trim() || firstTicket.receivingAmount1Date?.trim();
+    const headerPaymentDate = lastValidPaymentDate || moment().format('DD/MM/YYYY');
+    doc.text(`Ricevuta di pagamento del ${headerPaymentDate}`, 15, 60);
     doc.setFont("helvetica", "normal");
     
     doc.setFontSize(9);
     doc.text(`Operatore: Indus Viaggi`, 15, 67);
-    doc.text(`Nr. Documenti: ${ticketList.length}`, 15, 72);
+    doc.text(`Nr. Biglietti: ${ticketList.length}`, 15, 72);
+    doc.text(`Data stampa: ${moment().format('DD/MM/YYYY')}`, 15, 77);
 
     // 3. Passenger Spett.le Box (Right)
     doc.setDrawColor(0);
@@ -332,6 +334,10 @@ function Index() {
     doc.text(footerLine1, 105, 280, null, null, "center");
     doc.text(footerLine2, 105, 285, null, null, "center");
     doc.text(footerLine3, 105, 290, null, null, "center");
+    // Disclaimer: not valid for fiscal/tax purposes
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "italic");
+    doc.text("* Questa ricevuta non è valida ai fini fiscali.", 205, 295, null, null, "right");
   };
 
   const downloadTicket = (ticket) => {
@@ -484,7 +490,7 @@ function Index() {
     doc.autoTable({ startY: row, head: headers, body });
 
     // Footer
-    row = 280;
+    row = 285;
     doc.setFontSize(8);
     doc.text("Indus Viaggi", 200, row, null, null, "right");
     row += 2;
