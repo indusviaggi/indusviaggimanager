@@ -84,6 +84,7 @@ async function anonymizeTickets(db, faker) {
         update: {
           $set: {
             name: faker.person.fullName(),
+            payer: faker.person.fullName(),
             bookingCode: faker.string.alphanumeric(6).toUpperCase(),
             ticketNumber: faker.string.numeric(13),
             phone: faker.phone.number(),

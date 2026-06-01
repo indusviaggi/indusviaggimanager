@@ -559,6 +559,7 @@ async function upload(files) {
     n.map((ntp, i) => {
       let tkt = {
         name: ntp,
+        payer: "",
         bookingCode: c2,
         agent: agl.hasOwnProperty(ag) ? agl[ag] : ag,
         agentId: agl.hasOwnProperty(ag)
@@ -706,6 +707,7 @@ async function uploadAirArabia(files) {
 
             const tkt = {
                 name: passengerName,
+                payer: "",
                 bookingCode: bookingCode,
                 agent: agl.hasOwnProperty(agentCode) ? agl[agentCode] : '',
                 agentId: agl.hasOwnProperty(agentCode)
@@ -803,6 +805,7 @@ async function uploadWizzAir(files) {
 
         const tkt = {
           name: passengerName,
+          payer: "",
           bookingCode: bookingCode,
           agent: '',
           agentId: agl.hasOwnProperty(agent) ? agl[agent] : agency || admin || "123456789012345678901234",
@@ -906,6 +909,7 @@ async function uploadFlixbus(files) {
 
             const tkt = {
                 name: formattedName,
+                payer: "",
                 bookingCode: bookingCode,
                 agent: '',
                 agentId: agency || admin || "123456789012345678901234", // Default to agency or admin
@@ -1042,6 +1046,7 @@ async function uploadEmirates(files) {
       // Build ticket object
       const tkt = {
         name: passengerName,
+        payer: "",
         bookingCode: bookingCode,
         agent: '',
         agentId: agency || admin || "123456789012345678901234",

@@ -23,6 +23,7 @@ function AddEdit(props) {
     booked: Yup.date().required("Booked On is required"),
     bookcode: Yup.string().required("Booking code is required"),
     ticket: Yup.string().required("Ticket  number is required"),
+    payer: Yup.string().notRequired(),
     card: Yup.string().notRequired(),
     travel1: Yup.string().notRequired(),
     travel2: Yup.string().notRequired(),
@@ -67,6 +68,7 @@ function AddEdit(props) {
         bookingCode: data.bookcode,
         bookedOn: formatDate(data.booked),
         ticketNumber: data.ticket,
+        payer: data.payer || "",
         paidAmount: data.paid,
         receivingAmount1: data.receiving || 0,
         receivingAmount1Date:
@@ -110,6 +112,7 @@ function AddEdit(props) {
           bookcode: "",
           ticket: "",
           booked: "",
+          payer: "",
           card: "",
           travel1: "",
           travel2: "",
@@ -209,7 +212,7 @@ function AddEdit(props) {
         </div>
       </div>
       <div className="row">
-        <div className="mb-3 col">
+        <div className="mb-3 col-md-3 col-sm-6">
           <label className="form-label">
             Cost <span className="text-danger">*</span>
           </label>
@@ -223,7 +226,7 @@ function AddEdit(props) {
           />
           <div className="invalid-feedback">{errors.paid?.message}</div>
         </div>
-        <div className="mb-3 col">
+        <div className="mb-3 col-md-3 col-sm-6">
           <label className="form-label">
             Issue date <span className="text-danger">*</span>
           </label>
@@ -236,7 +239,7 @@ function AddEdit(props) {
           />
           <div className="invalid-feedback">{errors.booked?.message}</div>
         </div>
-        <div className="mb-3 col">
+        <div className="mb-3 col-md-3 col-sm-6">
           <label className="form-label">Issued By</label>
           <input
             name="iata"
@@ -246,6 +249,17 @@ function AddEdit(props) {
             className={`form-control ${errors.iata ? "is-invalid" : ""}`}
           />
           <div className="invalid-feedback">{errors.iata?.message}</div>
+        </div>
+        <div className="mb-3 col-md-3 col-sm-6">
+          <label className="form-label">Payer</label>
+          <input
+            name="payer"
+            defaultValue={ticket?.payer}
+            type="text"
+            {...register("payer")}
+            className={`form-control ${errors.payer ? "is-invalid" : ""}`}
+          />
+          <div className="invalid-feedback">{errors.payer?.message}</div>
         </div>
       </div>
 

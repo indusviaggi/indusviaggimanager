@@ -40,7 +40,7 @@ export default function RefundsPage() {
     if (globalSearch && searchField !== "all") {
       filtered = filtered.filter(ref => (ref[searchField] || "").toString().toLowerCase().includes(globalSearch.toLowerCase()));
     } else if (globalSearch && searchField === "all") {
-      filtered = filtered.filter(ref => ["name", "supplied", "refund", "refundDate", "refundUsed", "penality", "returned", "returnedDate", "bookingCode", "ticketNumber", "bookedOn"]
+      filtered = filtered.filter(ref => ["name", "payer", "supplied", "refund", "refundDate", "refundUsed", "penality", "returned", "returnedDate", "bookingCode", "ticketNumber", "bookedOn"]
         .some(field => (ref[field] || "").toString().toLowerCase().includes(globalSearch.toLowerCase())));
     }
     setRefunds(filtered);
@@ -332,6 +332,7 @@ export default function RefundsPage() {
           {refund && (
             <Table><TableBody>
               <TableRow><TableCell>Passenger:</TableCell><TableCell>{refund.name}</TableCell></TableRow>
+              <TableRow><TableCell>Payer:</TableCell><TableCell>{refund.payer}</TableCell></TableRow>
               <TableRow><TableCell>Supplied To:</TableCell><TableCell>{refund.supplied}</TableCell></TableRow>
               <TableRow><TableCell>Refund:</TableCell><TableCell>{refund.refund}</TableCell></TableRow>
               <TableRow><TableCell>Refund Date:</TableCell><TableCell>{refund.refundDate}</TableCell></TableRow>

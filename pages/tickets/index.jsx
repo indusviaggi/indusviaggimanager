@@ -53,7 +53,7 @@ function Index() {
     }
     // Multi-field search
     if (globalSearch) {
-      let fields = searchFields.includes("all") ? ["name", "agent", "bookingCode", "ticketNumber", "iata", "phone", "methods", "desc", "cardNumber"] : searchFields;
+      let fields = searchFields.includes("all") ? ["name", "payer", "agent", "bookingCode", "ticketNumber", "iata", "phone", "methods", "desc", "cardNumber"] : searchFields;
       filtered = filtered.filter(ticket =>
         fields.some(field => (ticket[field] || "").toString().toLowerCase().includes(globalSearch.toLowerCase()))
       );
@@ -91,7 +91,7 @@ function Index() {
   }, [notPaidOnly, globalSearch, searchFields, apiTickets, sortConfig]);
 
   const PRIORITY_FIELDS = [
-    'name', 'bookingCode', 'ticketNumber', 'bookedOn', 'iata',
+    'name', 'payer', 'bookingCode', 'ticketNumber', 'bookedOn', 'iata',
     'profit', 'paidAmount', 'customerCost', 'receivingAmountT', 'methods', 'paymentMethod',
     'phone', 'agent', 'agentCost',
     'receivingAmount1', 'receivingAmount1Date',
@@ -210,7 +210,7 @@ function Index() {
     doc.text("Spett.le", 115, 56);
     doc.setFontSize(11);
     doc.setFont("helvetica", "bold");
-    doc.text(firstTicket.name, 115, 63, { maxWidth: 75 });
+    doc.text(firstTicket.payer?.trim() || firstTicket.name, 115, 63, { maxWidth: 75 });
     doc.setFontSize(9);
     doc.setFont("helvetica", "normal");
     doc.text("Contatto: " + (firstTicket.phone || 'N/A'), 115, 72);
@@ -471,7 +471,7 @@ function Index() {
     row += 2;
 
     // Table
-    const headers = [["Name", "Booking Date", "PNR", "Ticket N.", "Agent Cost", "Fully Paid"]];
+    const headers = [["Name", "Payer", "Booking Date", "PNR", "Ticket N.", "Agent Cost", "Fully Paid"]];
     const body = dataToExport.map(t => {
       const costStr = t.receivingAmountT || '';
       const paidStr = t.agentCost || '';
@@ -480,6 +480,7 @@ function Index() {
       const remained = costN - paidN;
       return [
         t.name || '',
+        t.payer || '',
         t.bookedOn || '',
         t.bookingCode || '',
         t.ticketNumber || '',
@@ -814,6 +815,7 @@ function Index() {
           {ticket && (
             <Table><TableBody>
               <TableRow><TableCell>Passenger:</TableCell><TableCell>{ticket.name}</TableCell></TableRow>
+              <TableRow><TableCell>Payer:</TableCell><TableCell>{ticket.payer}</TableCell></TableRow>
               <TableRow><TableCell>Agent:</TableCell><TableCell>{ticket.agent}</TableCell></TableRow>
               <TableRow><TableCell>PNR:</TableCell><TableCell>{ticket.bookingCode}</TableCell></TableRow>
               <TableRow><TableCell>Ticket:</TableCell><TableCell>{ticket.ticketNumber}</TableCell></TableRow>
