@@ -4,6 +4,7 @@ import { cleanFlight, formatDate } from "./index";
 const baseUrl = `/api/tickets`;
 const usersUrl = "/api/users";
 const airlinesUrl = "/api/flights";
+const backupUrl = "/api/backup";
 const months = [
   "Jan",
   "Feb",
@@ -32,6 +33,7 @@ export const ticketsService = {
   getTicketsByAgent,
   getFlights,
   getBookings,
+  downloadBackup,
   uploadAirArabia,
   uploadWizzAir,
   uploadFlixbus,
@@ -166,6 +168,10 @@ async function getRefundsForSupply(filters = {}) {
 async function getBookings() {
   const tickets = await fetchWrapper.get(baseUrl + '/profit');
   return tickets;
+}
+
+async function downloadBackup() {
+  return await fetchWrapper.getBinary(backupUrl);
 }
 
 async function getProfit(filters) {

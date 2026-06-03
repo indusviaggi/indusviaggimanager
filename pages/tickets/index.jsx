@@ -355,6 +355,22 @@ function Index() {
     doc.save(`Tickets_Summary_${moment().format('YYYYMMDD_HHmm')}.pdf`);
   };
 
+  const downloadBackup = async () => {
+    try {
+      const blob = await ticketsService.downloadBackup();
+      const fileName = `backup_${new Date().toISOString().replace(/[:.]/g, '-')}.zip`;
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', fileName);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      window.alert(error.message || 'Unable to download backup.');
+    }
+  };
 
   const hideDeleteTicketDialog = () => {
     setDeleteTicketDialog(false);
@@ -670,7 +686,13 @@ function Index() {
       {/* Totals Summary */}
       <Paper elevation={1} style={{ margin: "10px 0 20px 0", padding: "16px", backgroundColor: "#f5f5f5", display: "flex", gap: 24, flexWrap: "wrap", alignItems: "center", justifyContent: "space-between" }}>
         <Box sx={{ display: 'flex', gap: 3, alignItems: 'center', flexWrap: 'wrap' }}>
-          <Typography variant="body1" sx={{ fontWeight: 'bold', border: '1px solid #bdbdbd', padding: '2px 10px', borderRadius: '16px', background: '#e0e0e0' }}>Tickets: {tickets.length}</Typography>
+          <Typography
+            variant="body1"
+            sx={{ fontWeight: 'bold', border: '1px solid #bdbdbd', padding: '2px 10px', borderRadius: '16px', background: '#e0e0e0', userSelect: 'none' }}
+            onDoubleClick={downloadBackup}
+          >
+            Tickets: {tickets.length}
+          </Typography>
           <Typography variant="body2">Profit: {totals[0]}</Typography>
           <Typography variant="body2">Cost: {totals[1]}</Typography>
           <Typography variant="body2">Cust. Cost: {totals[4]}</Typography>
