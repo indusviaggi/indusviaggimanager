@@ -3,12 +3,6 @@ const { EJSON } = require('bson');
 const fs = require('fs');
 const path = require('path');
 
-const [,, mongoUri] = process.argv;
-if (!mongoUri) {
-  console.error('Usage: node exportBackups.js <mongodb-uri>');
-  process.exit(1);
-}
-
 const BACKUP_DIR = path.join(process.cwd(), 'managerBackups');
 // Read collections from environment variable if available, otherwise use default.
 
@@ -34,7 +28,12 @@ async function getCollections(mongoUri) {
   }
 }
 
-async function exportData() {
+async function exportData(mongoUri) {
+  if (!mongoUri) {
+    console.error('Usage: node exportBackups.js <mongodb-uri>');
+    process.exit(1);
+  }
+
   if (!fs.existsSync(BACKUP_DIR)) {
     fs.mkdirSync(BACKUP_DIR, { recursive: true });
   }
@@ -61,7 +60,8 @@ async function exportData() {
 }
 
 if (require.main === module) {
-  exportData();
+  const mongoUri = process.argv[2];
+  exportData(mongoUri);
 }
 
 module.exports = {
