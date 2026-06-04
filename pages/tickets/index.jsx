@@ -265,6 +265,7 @@ function Index() {
     doc.setFont("helvetica", "normal");
 
     let totalPaymentsNumeric = 0;
+    let totalCostNumeric = 0;
 
     ticketList.forEach(t => {
       const p1 = parseFloat(t.receivingAmount1 || '0') || 0;
@@ -283,7 +284,17 @@ function Index() {
         currentY += (lines.length * 4);
       }
       totalPaymentsNumeric += (p1 + p2 + p3);
+      
+      if (t.customerCost && t.customerCost.trim()) {
+        totalCostNumeric += parseFloat(String(t.customerCost || '0').replace(/[^\d.-]/g, '')) || 0;
+      }
     });
+
+    if (totalCostNumeric === 0) {
+      totalCostNumeric = totalPaymentsNumeric;
+    }
+
+    const daSaldareNumeric = totalCostNumeric - totalPaymentsNumeric;
 
     // 6. Totals Grid & Signature
     const startTotalsY = 215;
@@ -299,15 +310,15 @@ function Index() {
     doc.setFontSize(8);
     doc.text("Tot. Importo", 18, startTotalsY + 5);
     doc.text("", 58, startTotalsY + 5);
-    doc.text("Tot. Pagato", 138, startTotalsY + 5);
+    doc.text("", 138, startTotalsY + 5);
     doc.text("Da Saldare", 168, startTotalsY + 5);
 
     // Values for totals
     doc.setFontSize(10);
-    doc.text(`€ ${totalPaymentsNumeric.toFixed(2)}`, 40, startTotalsY + 12, null, null, "right");
+    doc.text(`€ ${totalCostNumeric.toFixed(2)}`, 40, startTotalsY + 12, null, null, "right");
     doc.text('', 80, startTotalsY + 12, null, null, "right");
-    doc.text(`€ ${totalPaymentsNumeric.toFixed(2)}`, 160, startTotalsY + 12, null, null, "right"); // Tot. Pagato
-    doc.text('€ 0.00', 190, startTotalsY + 12, null, null, "right"); // Da Saldare
+    doc.text(``, 160, startTotalsY + 12, null, null, "right"); // Tot. Pagato
+    doc.text(`€ ${daSaldareNumeric.toFixed(2)}`, 190, startTotalsY + 12, null, null, "right"); // Da Saldare
 
     // Net amount prominent line
     doc.line(15, startTotalsY + 15, 195, startTotalsY + 15);
@@ -790,6 +801,7 @@ function Index() {
                   {ticket.profit}
                 </Typography>
                 <Typography sx={{ width: 80, minWidth: 80, maxWidth: 80, textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ticket.paidAmount}</Typography>
+                <Typography sx={{ width: 80, minWidth: 80, maxWidth: 80, textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ticket.customerCost}</Typography>
                 <Typography sx={{ width: 80, minWidth: 80, maxWidth: 80, textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ticket.receivingAmountT}</Typography>
                 <Typography sx={{ width: 100, minWidth: 100, maxWidth: 100, textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ticket.bookedOn}</Typography>
                 <Typography variant='body2' sx={{ width: 80, minWidth: 80, maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ticket.methods}</Typography>
