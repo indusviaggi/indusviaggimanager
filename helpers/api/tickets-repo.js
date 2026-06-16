@@ -59,24 +59,28 @@ async function getTicketsByAgent(filters) {
 }
 
 async function getTicketsForSupply(filters) {
-  let filter = {
-    ...filters,
-    $and: [{ iata: { $eq: "SCA" } }],
-    $expr: { $gt: [{ $toDouble: "$paidAmount" }, { $toDouble: "$supplied" }] },
-  };
+  const supplier = filters?.supplier;
+  const filter = { ...filters };
+  delete filter.supplier;
+
+  filter.iata = { $eq: supplier || "SCA" };
+  filter.$expr = { $gt: [{ $toDouble: "$paidAmount" }, { $toDouble: "$supplied" }] };
+
   return await Tickets.find(filter).sort({ bookedOn: -1 });
 }
 
 async function getRefundsForSupply(filters) {
-  let filter = {
-    ...filters,
-    $and: [
-      { refund: { $ne: null } },
-      { refund: { $ne: "" } },
-      { iata: { $eq: "SCA" } },
-    ],
-    $expr: { $gt: [{ $toDouble: "$refund" }, { $toDouble: "$refundUsed" }] },
-  };
+  const supplier = filters?.supplier;
+  const filter = { ...filters };
+  delete filter.supplier;
+
+  filter.$and = [
+    { refund: { $ne: null } },
+    { refund: { $ne: "" } },
+    { iata: { $eq: supplier || "SCA" } },
+  ];
+  filter.$expr = { $gt: [{ $toDouble: "$refund" }, { $toDouble: "$refundUsed" }] };
+
   return await Tickets.find(filter).sort({ bookedOn: -1 });
 }
 

@@ -19,6 +19,7 @@ export default function SuppliersTransfersPage() {
   const [totals, setTotals] = useState({ supplied: 0, refund: 0, total: 0 });
   const [opExcel, setOpExcel] = useState([]);
   const [dates, setDates] = useState({ start: "", end: "", type: "transferDate" });
+  const [supplierFilter, setSupplierFilter] = useState("");
   const [loading, setLoading] = useState(true);
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [deleteGroupKey, setDeleteGroupKey] = useState(null);
@@ -36,7 +37,7 @@ export default function SuppliersTransfersPage() {
     let transfer = operations[deleteGroupKey];
     transfer.map((op) => {
       let isRefund = op.operation.includes("Used");
-      let isSca = op.operation.includes("SCA");
+      let isSca = op.operation.includes("SCA") || op.operation.includes("INDUS");
       let ticketRefundUsed = isRefund ? parseFloat(op.ticketRefundUsedN) : null;
       let suppliedTicket = isSca ? parseFloat(op.suppliedTicketN) : null;
       let supplied = op.ticket[0].supplied ? parseFloat(op.ticket[0].supplied) : null;
@@ -68,13 +69,19 @@ export default function SuppliersTransfersPage() {
       setDates({ start, end, type });
     }
     operationsService.getAll({ start, end, type }).then((res) => {
-      const operationsI = res.reduce((group, arr) => {
+      // filter on frontend by supplierFilter (check if operation contains SCA or INDUS)
+      const filtered = res.filter((op) => {
+        if (!supplierFilter) return true;
+        return op.operation && op.operation.toUpperCase().includes(supplierFilter.toUpperCase());
+      });
+
+      const operationsI = filtered.reduce((group, arr) => {
         const { transferName } = arr;
         group[transferName] = group[transferName] ?? [];
         group[transferName].push(arr);
         return group;
       }, {});
-      setOpExcel(res);
+      setOpExcel(filtered);
       setOperations(operationsI);
       let transferAmountTotalOperationI = 0;
       let refundAmountTotalOperationI = 0;
@@ -141,11 +148,13 @@ export default function SuppliersTransfersPage() {
   const FilterBar = (
     <Paper elevation={2} sx={{ p: 2, mb: 3 }}>
       <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'end', width: '100%' }}>
-        <Box sx={{ minWidth: 120 }}>
+        <Box sx={{ minWidth: 160 }}>
           <FormControl size="small" fullWidth>
-            <InputLabel id="type-label">Type</InputLabel>
-            <Select labelId="type-label" id="type" value={dates.type || "transferDate"} onChange={e => setDates(d => ({ ...d, type: e.target.value }))} label="Type">
-              <MenuItem value="transferDate">Transfer Date</MenuItem>
+            <InputLabel id="supplier-label">Supplier</InputLabel>
+            <Select labelId="supplier-label" id="supplier-filter" value={supplierFilter} onChange={e => setSupplierFilter(e.target.value)} label="Supplier">
+              <MenuItem value="">All</MenuItem>
+              <MenuItem value="SCA">SCA</MenuItem>
+              <MenuItem value="INDUS">INDUS</MenuItem>
             </Select>
           </FormControl>
         </Box>
