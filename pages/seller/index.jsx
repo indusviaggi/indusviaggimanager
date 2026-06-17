@@ -189,7 +189,21 @@ export default function SuppliersTransfersPage() {
       )}
       {!loading && operations && Object.keys(operations).length > 0 && (
         <Box sx={{ width: '100%', mb: 2 }}>
-          {Object.keys(operations).map((key, i) => (
+          {Object.keys(operations).map((key, i) => {
+            const group = operations[key];
+            const groupSuppliers = Array.from(new Set(group.map((op) => {
+              const iata = op.ticket?.[0]?.iata;
+              if (iata) return iata;
+              const text = op.operation?.toUpperCase() || "";
+              const hasIndus = text.includes("INDUS");
+              const hasSca = text.includes("SCA");
+              if (hasIndus && hasSca) return "INDUS/SCA";
+              if (hasIndus) return "INDUS";
+              if (hasSca) return "SCA";
+              return "Unknown";
+            })));
+            const supplierLabel = groupSuppliers.length === 1 ? groupSuppliers[0] : groupSuppliers.length > 1 ? "Mixed" : "Unknown";
+            return (
             <Accordion 
             key={key} 
             sx={{ 
@@ -201,11 +215,11 @@ export default function SuppliersTransfersPage() {
             >
               <AccordionSummary expandIcon={<ExpandMoreIcon />}>                 
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', width: '100%' }}>
-                  <Typography sx={{ fontWeight: 600, mr: 2 }}>{i+1} - Bonifico</Typography>
-                  <Typography sx={{ mr: 2 }}>Date: {operations[key][0].transferDate}</Typography>
-                  <Typography sx={{ mr: 2 }}>Total: {operations[key][0].totalOperation}</Typography>
-                  <Typography sx={{ mr: 2 }}>Supplied: {operations[key][0].transferAmountTotalOperation}</Typography>
-                  <Typography sx={{ mr: 2 }}>Refund: {operations[key][0].refundAmountTotalOperation}</Typography>
+                  <Typography sx={{ fontWeight: 600, mr: 2 }}>{i+1} - Bonifico {supplierLabel}</Typography>
+                  <Typography sx={{ mr: 2 }}>Date: {group[0].transferDate}</Typography>
+                  <Typography sx={{ mr: 2 }}>Total: {group[0].totalOperation}</Typography>
+                  <Typography sx={{ mr: 2 }}>Supplied: {group[0].transferAmountTotalOperation}</Typography>
+                  <Typography sx={{ mr: 2 }}>Refund: {group[0].refundAmountTotalOperation}</Typography>
                   <span
                     tabIndex={0}
                     style={{ cursor: 'pointer', marginLeft: 8, display: 'inline-flex' }}
@@ -256,7 +270,8 @@ export default function SuppliersTransfersPage() {
                 </Box>
               </AccordionDetails>
             </Accordion>
-          ))}
+            );
+          })}
         </Box>
       )}
       <Dialog open={deleteDialog} onClose={() => setDeleteDialog(false)}>
